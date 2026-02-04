@@ -1,0 +1,3 @@
+[bindings.swift]
+module_name = "GritCore"
+cdylib_name = "grit_core"
