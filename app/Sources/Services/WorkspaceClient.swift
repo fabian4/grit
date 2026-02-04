@@ -22,4 +22,18 @@ actor WorkspaceClient {
         }
         return try repo.diff()
     }
+
+    func diff(path: String) throws -> String {
+        guard let repo else {
+            throw AppError.Message(message: "Repo not opened")
+        }
+        return try repo.diffPath(path: path)
+    }
+
+    func root() throws -> String {
+        guard let repo else {
+            throw AppError.Message(message: "Repo not opened")
+        }
+        return repo.root()
+    }
 }

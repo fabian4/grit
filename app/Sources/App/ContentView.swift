@@ -4,49 +4,33 @@ import AppKit
 struct ContentView: View {
     @StateObject private var viewModel = RepoViewModel()
     @FocusState private var isPathFocused: Bool
+    @State private var splitRatio: CGFloat = CGFloat(AppConfig.shared.splitRatio)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                TextField("Repo path", text: $viewModel.repoPath, prompt: Text("/path/to/repo"))
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isPathFocused)
-                    .frame(maxWidth: .infinity)
-                    .onTapGesture {
-                        NSApp.activate(ignoringOtherApps: true)
-                        isPathFocused = true
-                    }
-                Button("Open Repo") {
-                    Task { await viewModel.openRepo() }
-                }
-            }
-
-            HStack {
-                Button("Run Git Status") {
-                    Task { await viewModel.runStatus() }
-                }
-                .disabled(!viewModel.isRepoOpen)
-
-                Button("Run Git Diff") {
-                    Task { await viewModel.runDiff() }
-                }
-                .disabled(!viewModel.isRepoOpen)
-            }
-
-            ScrollView {
-                Text(viewModel.output)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .textSelection(.enabled)
-                    .font(.system(.body, design: .monospaced))
-                    .padding(6)
-            }
-            .border(Color.gray.opacity(0.3))
+        VStack(spacing: 0) {
+            panelArea
         }
-        .padding()
-        .frame(minWidth: 640, minHeight: 480)
+        .frame(minWidth: 900, minHeight: 600)
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             isPathFocused = true
+            Task { await viewModel.openRepo() }
+        }
+    }
+}
+
+private extension ContentView {
+    @ViewBuilder
+    var panelArea: some View {
+        VStack(spacing: 0) {
+            ResizableSplitView(ratio: $splitRatio, minLeft: 180, minRight: 400) {
+                LeftPanel(viewModel: viewModel)
+            } right: {
+                MainPanel(viewModel: viewModel)
+            }
+            Divider()
+            BottomPanel()
+                .frame(minHeight: 180, maxHeight: 260)
         }
     }
 }

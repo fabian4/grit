@@ -27,6 +27,9 @@ let package = Package(
                 "Services/Generated/interface.modulemap",
                 "Services/Generated/module.modulemap"
             ],
+            resources: [
+                .process("../Config.json")
+            ],
             linkerSettings: [
                 .unsafeFlags(["-L", "../crates/core/target/debug", "-lgrit_core"])
             ]

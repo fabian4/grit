@@ -7,6 +7,8 @@ interface AppError {
 
 interface RepoService {
   [Throws=AppError] constructor(string path);
+  string root();
   [Throws=AppError] string status();
   [Throws=AppError] string diff();
+  [Throws=AppError] string diff_path(string path);
 };

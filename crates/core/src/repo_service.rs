@@ -19,10 +19,32 @@ impl RepoService {
     }
 
     pub fn status(&self) -> Result<String, AppError> {
-        GitRunner::run(vec!["status".to_string()], self.root.clone())
+        GitRunner::run(
+            vec!["status".to_string(), "--porcelain".to_string()],
+            self.root.clone(),
+        )
+    }
+
+    pub fn root(&self) -> String {
+        self.root.clone()
     }
 
     pub fn diff(&self) -> Result<String, AppError> {
-        GitRunner::run(vec!["diff".to_string()], self.root.clone())
+        GitRunner::run(
+            vec!["diff".to_string(), "-U999999".to_string()],
+            self.root.clone(),
+        )
+    }
+
+    pub fn diff_path(&self, path: String) -> Result<String, AppError> {
+        GitRunner::run(
+            vec![
+                "diff".to_string(),
+                "-U999999".to_string(),
+                "--".to_string(),
+                path,
+            ],
+            self.root.clone(),
+        )
     }
 }

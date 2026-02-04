@@ -12,3 +12,6 @@ build:
 run:
 	$(MAKE) build
 	open ./app/.build/debug/Grit
+
+kill:
+	-killall Grit 2>/dev/null || true
