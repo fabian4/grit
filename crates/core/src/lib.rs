@@ -3,15 +3,17 @@ mod repo_service;
 
 pub use repo_service::RepoService;
 
-#[derive(Debug, Clone, thiserror::Error, uniffi::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum AppError {
-    #[error("{0}")]
-    Message(String),
+    #[error("{message}")]
+    Message { message: String },
 }
 
 impl AppError {
     pub fn new(message: impl Into<String>) -> Self {
-        AppError::Message(message.into())
+        AppError::Message {
+            message: message.into(),
+        }
     }
 }
 

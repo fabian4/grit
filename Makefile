@@ -1,8 +1,14 @@
-build-core:
-	cargo build --manifest-path crates/core/Cargo.toml
-
 gen:
 	scripts/gen-bindings.sh
 
+build-core:
+	cargo build --manifest-path crates/core/Cargo.toml
+
+build:
+	$(MAKE) gen
+	$(MAKE) build-core
+	swift build --package-path app
+
 run:
-	xcodebuild -scheme Grit -destination 'platform=macOS' -derivedDataPath .build -packagePath app build
+	$(MAKE) build
+	open ./app/.build/debug/Grit

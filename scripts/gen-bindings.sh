@@ -10,8 +10,6 @@ CONFIG_FILE="$ROOT_DIR/crates/core/uniffi.toml"
 
 mkdir -p "$OUT_DIR"
 
-if ! command -v uniffi-bindgen >/dev/null 2>&1; then
-  cargo install uniffi_bindgen
-fi
-
-uniffi-bindgen generate "$UDL_FILE" --language swift --out-dir "$OUT_DIR" --config "$CONFIG_FILE"
+pushd "$ROOT_DIR/crates/core" >/dev/null
+cargo run --quiet --bin uniffi_gen -- "$UDL_FILE" "$OUT_DIR"
+popd >/dev/null

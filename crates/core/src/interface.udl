@@ -1,11 +1,12 @@
-namespace grit_core {
-  record AppError {
-    message: string;
-  };
+namespace grit_core {};
 
-  interface RepoService {
-    static open(path: string) -> RepoService throws AppError;
-    status() -> string throws AppError;
-    diff() -> string throws AppError;
-  };
+[Error]
+interface AppError {
+  Message(string message);
+};
+
+interface RepoService {
+  [Throws=AppError] constructor(string path);
+  [Throws=AppError] string status();
+  [Throws=AppError] string diff();
 };

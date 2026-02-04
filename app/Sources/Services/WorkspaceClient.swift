@@ -6,19 +6,19 @@ actor WorkspaceClient {
     private var repo: RepoService?
 
     func open(path: String) throws {
-        repo = try RepoService.open(path: path)
+        repo = try RepoService(path: path)
     }
 
     func status() throws -> String {
         guard let repo else {
-            throw AppError(message: "Repo not opened")
+            throw AppError.Message(message: "Repo not opened")
         }
         return try repo.status()
     }
 
     func diff() throws -> String {
         guard let repo else {
-            throw AppError(message: "Repo not opened")
+            throw AppError.Message(message: "Repo not opened")
         }
         return try repo.diff()
     }

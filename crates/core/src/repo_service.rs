@@ -6,7 +6,7 @@ pub struct RepoService {
 }
 
 impl RepoService {
-    pub fn open(path: String) -> Result<Self, AppError> {
+    pub fn new(path: String) -> Result<Self, AppError> {
         let output = GitRunner::run(
             vec!["rev-parse".to_string(), "--show-toplevel".to_string()],
             path,

@@ -7,8 +7,10 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-uniffi = "0.25"
+uniffi = "0.31"
 thiserror = "1.0"
+uniffi_bindgen = "0.31"
+camino = "1.1"
 
 [build-dependencies]
-uniffi = { version = "0.25", features = ["build"] }
+uniffi = { version = "0.31", features = ["build"] }
