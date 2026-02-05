@@ -57,6 +57,7 @@ enum LeftPanelMode: String, Hashable, CaseIterable, Identifiable {
 }
 
 final class RepoViewModel: ObservableObject {
+    static let shared = RepoViewModel()
     @Published var repoPath: String
     @Published var output: String = ""
     @Published var isRepoOpen: Bool = false

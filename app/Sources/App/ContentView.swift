@@ -2,15 +2,21 @@ import SwiftUI
 import AppKit
 
 struct ContentView: View {
-    @StateObject private var viewModel = RepoViewModel()
+    @StateObject private var viewModel = RepoViewModel.shared
     @FocusState private var isPathFocused: Bool
     @State private var splitRatio: CGFloat = CGFloat(AppConfig.shared.splitRatio)
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack {
+            AppTheme.backgroundGradient
+                .ignoresSafeArea()
+            AppTheme.jetbrainsGlow
+                .ignoresSafeArea()
             panelArea
         }
         .frame(minWidth: 900, minHeight: 600)
+        .tint(AppTheme.accent)
+        .environment(\.colorScheme, .dark)
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             isPathFocused = true
