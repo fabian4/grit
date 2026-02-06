@@ -30,7 +30,7 @@ struct ResizableSplitView<Left: View, Right: View>: View {
                     .frame(width: leftWidth)
                 Divider()
                     .frame(width: 1)
-                    .background(Color.gray.opacity(0.4))
+                    .background(AppTheme.chromeDivider)
                     .gesture(
                         DragGesture(minimumDistance: 1)
                             .onChanged { value in

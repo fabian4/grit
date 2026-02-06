@@ -29,6 +29,7 @@ private extension ContentView {
     @ViewBuilder
     var panelArea: some View {
         VStack(spacing: 0) {
+            TopBar(viewModel: viewModel)
             ResizableSplitView(ratio: $splitRatio, minLeft: 180, minRight: 400) {
                 LeftPanel(viewModel: viewModel)
             } right: {

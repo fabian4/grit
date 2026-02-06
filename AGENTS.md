@@ -41,3 +41,22 @@ For PRs, include:
 - Generate bindings via `scripts/gen-bindings.sh` rather than editing `Generated/` manually.
 - Git operations in Rust should shell out to system `git` (no libgit2).
 - Agent rule: never run git commands in this repository.
+
+## Peekaboo UI Validation Workflow
+Use Peekaboo for visual verification when iterating on macOS UI.
+
+- Preconditions:
+- `peekaboo` is installed (`peekaboo --version`).
+- Accessibility and Screen Recording permissions are granted (`peekaboo permissions --json`).
+- App is launched via `make run`.
+
+- Recommended capture flow:
+- List the app window and read its `window_id`:
+  - `peekaboo window list --app Grit --json > /tmp/grit-ui-window.json`
+  - `W=$(jq -r '.data.windows[0].window_id' /tmp/grit-ui-window.json)`
+- Capture by `window_id` (do not rely on app-name auto selection):
+  - `peekaboo image --window-id "$W" --mode window --path /tmp/grit-ui.png`
+
+- Notes:
+- Capturing by app name can select the wrong surface (for example, a thin titlebar-only layer).
+- For before/after comparisons, save separate files (for example, `/tmp/grit-ui-before.png` and `/tmp/grit-ui-after.png`) and compare hashes or images.

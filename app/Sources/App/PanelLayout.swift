@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct TopBar: View {
     @ObservedObject var viewModel: RepoViewModel
@@ -11,11 +12,12 @@ struct TopBar: View {
         ZStack {
             HStack(spacing: 12) {
                 HStack(spacing: 8) {
-                    Image(systemName: "cube.transparent")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text("Grit")
-                        .font(.system(size: 12, weight: .semibold, design: .serif))
+                    Image(systemName: "line.3.horizontal")
+                    Image(systemName: "folder")
+                    Text("untitled-project")
+                        .font(.system(size: 11, weight: .semibold))
                 }
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText)
 
                 HStack(spacing: 6) {
@@ -28,6 +30,8 @@ struct TopBar: View {
 
                 Spacer(minLength: 0)
             }
+            .padding(.leading, 8)
+            .padding(.trailing, 8)
 
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -43,7 +47,7 @@ struct TopBar: View {
                             .fill(AppTheme.chromeDark)
                     )
             }
-            .frame(width: 380)
+            .frame(minWidth: 220, idealWidth: 300, maxWidth: 340)
             .background(
                 Rectangle()
                     .fill(AppTheme.chromeDarkElevated)
@@ -60,7 +64,7 @@ struct TopBar: View {
                     Image(systemName: "arrow.triangle.branch")
                     Text("master")
                 }
-                .font(.system(size: 11, weight: .regular))
+                .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(AppTheme.chromeMuted)
 
                 ToolBarButton(symbol: "play.fill", label: "Run", tint: AppTheme.accent, style: .flat)
@@ -82,7 +86,7 @@ struct TopBar: View {
             }
         }
         .background(AppTheme.chromeDark)
-        .frame(height: 20)
+        .frame(height: 28)
     }
 }
 
@@ -103,7 +107,7 @@ struct ToolBarButton: View {
             Image(systemName: symbol)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: 22, height: 20)
+                .frame(width: 24, height: 24)
                 .background(backgroundShape)
         }
         .buttonStyle(.plain)
@@ -137,7 +141,7 @@ struct ToolWindowRail: View {
             Spacer(minLength: 0)
             RailButton(symbol: "gearshape", label: "Settings")
         }
-        .frame(width: 38)
+        .frame(width: 44)
         .background(
             Rectangle()
                 .fill(AppTheme.chromeDark)
@@ -159,7 +163,7 @@ struct RailButton: View {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText)
-                .frame(width: 26, height: 26)
+                .frame(width: 28, height: 28)
                 .background(
                     Rectangle()
                         .fill(AppTheme.chromeDarkElevated)
@@ -174,14 +178,14 @@ struct LeftPanel: View {
     @ObservedObject var viewModel: RepoViewModel
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 0) {
             ToolWindowRail()
                 .environment(\.colorScheme, .dark)
             ChromeCard {
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Workspace")
-                            .font(.system(.title3, design: .serif))
+                            .font(.system(size: 20, weight: .semibold))
                             .fontWeight(.semibold)
                         Text(viewModel.repoPath)
                             .font(.caption)
@@ -277,9 +281,10 @@ struct MainPanel: View {
     var body: some View {
         PanelCard {
             VStack(alignment: .leading, spacing: 12) {
+                IDETabStrip()
                 VStack(alignment: .leading, spacing: 4) {
                     Text(detailTitle)
-                        .font(.system(.title3, design: .serif))
+                        .font(.system(size: 20, weight: .semibold))
                         .fontWeight(.semibold)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -345,6 +350,44 @@ struct MainPanel: View {
         }
     }
 
+}
+
+struct IDETabStrip: View {
+    var body: some View {
+        HStack(spacing: 2) {
+            IDETab(title: "Main.kt", icon: "k.circle.fill", isActive: true)
+            IDETab(title: "Utils.java", icon: "j.circle.fill", isActive: false)
+            Spacer(minLength: 0)
+        }
+        .frame(height: 28)
+        .background(AppTheme.chromeDark)
+        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+    }
+}
+
+private struct IDETab: View {
+    let title: String
+    let icon: String
+    let isActive: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(AppTheme.chromeText)
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(isActive ? AppTheme.chromeDarkElevated : AppTheme.chromeDark)
+        .overlay(
+            Rectangle()
+                .fill(isActive ? Color(red: 0.23, green: 0.57, blue: 0.98) : .clear)
+                .frame(height: 1.5),
+            alignment: .top
+        )
+    }
 }
 
 struct BottomPanel: View {
