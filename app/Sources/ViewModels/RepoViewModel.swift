@@ -66,6 +66,8 @@ final class RepoViewModel: ObservableObject {
     @Published var selectedFileID: String? = nil
     @Published var fileContent: String = ""
     @Published var selectedPath: String? = nil
+    @Published var openTabs: [String] = []
+    @Published var pinnedTabs: Set<String> = []
     @Published var detailOutput: String = ""
     @Published var hunks: [DiffHunk] = []
     @Published var selectedHunkID: String? = nil
@@ -74,6 +76,9 @@ final class RepoViewModel: ObservableObject {
     @Published var diffMode: DiffViewMode = AppConfig.shared.diffView
     @Published var groupDiffByFolder: Bool = false
     @Published var isDetailEditable: Bool = false
+    @Published var terminalOutput: String = "Grit terminal ready.\n"
+    @Published var terminalCommand: String = "pwd"
+    @Published var isTerminalRunning: Bool = false
 
     private let client = WorkspaceClient.shared
     private var fileIndex: [String: FileNode] = [:]
@@ -114,6 +119,9 @@ final class RepoViewModel: ObservableObject {
             statusItems = parseStatus(result)
             if selectedPath == nil {
                 selectedPath = statusItems.first?.path
+            }
+            if let path = selectedPath {
+                activateTab(path)
             }
             await loadDiffForSelection()
         } catch {
@@ -182,17 +190,161 @@ final class RepoViewModel: ObservableObject {
 
     @MainActor
     func loadFileForSelection() async {
-        guard let id = selectedFileID, let node = fileIndex[id], !node.isDirectory else {
+        let resolvedNode: FileNode? = {
+            if let id = selectedFileID, let byID = fileIndex[id], !byID.isDirectory {
+                return byID
+            }
+            if let path = selectedPath, let byPath = fileIndex[path], !byPath.isDirectory {
+                return byPath
+            }
+            return nil
+        }()
+
+        guard let node = resolvedNode else {
             fileContent = ""
             diffLines = []
             return
         }
+        // Keep both selectors in sync so panel switches do not lose context.
+        selectedFileID = node.id
+        selectedPath = node.relativePath
+        activateTab(node.relativePath)
         do {
             fileContent = try String(contentsOfFile: node.absolutePath, encoding: .utf8)
             diffLines = parsePlainLines(fileContent, withLineNumbers: true)
         } catch {
             fileContent = "Unable to load file: \(node.relativePath)"
             diffLines = []
+        }
+    }
+
+    @MainActor
+    func selectAndLoadFile(path: String, id: String? = nil) async {
+        let key = id ?? path
+        let resolvedNode: FileNode? = {
+            if let byKey = fileIndex[key], !byKey.isDirectory {
+                return byKey
+            }
+            if let byPath = fileIndex[path], !byPath.isDirectory {
+                return byPath
+            }
+            return nil
+        }()
+
+        guard let node = resolvedNode else {
+            selectedFileID = id
+            selectedPath = path
+            fileContent = ""
+            diffLines = []
+            return
+        }
+
+        leftMode = .files
+        selectedFileID = node.id
+        selectedPath = node.relativePath
+        activateTab(node.relativePath)
+
+        do {
+            fileContent = try String(contentsOfFile: node.absolutePath, encoding: .utf8)
+            diffLines = parsePlainLines(fileContent, withLineNumbers: true)
+        } catch {
+            fileContent = "Unable to load file: \(node.relativePath)"
+            diffLines = []
+        }
+    }
+
+    @MainActor
+    func activateTab(_ path: String) {
+        guard !path.isEmpty else { return }
+        if let index = openTabs.firstIndex(of: path) {
+            openTabs.remove(at: index)
+        }
+        openTabs.append(path)
+        if openTabs.count > 8 {
+            openTabs.removeFirst(openTabs.count - 8)
+        }
+    }
+
+    @MainActor
+    func closeTab(_ path: String) {
+        openTabs.removeAll { $0 == path }
+        pinnedTabs.remove(path)
+        guard selectedPath == path else { return }
+        selectedPath = openTabs.last
+        if let next = selectedPath {
+            selectedFileID = fileIndex[next]?.id
+        } else {
+            selectedFileID = nil
+        }
+    }
+
+    @MainActor
+    func togglePinTab(_ path: String) {
+        if pinnedTabs.contains(path) {
+            pinnedTabs.remove(path)
+        } else {
+            pinnedTabs.insert(path)
+        }
+    }
+
+    var displayedTabs: [String] {
+        let recency = Array(openTabs.reversed())
+        let pinned = recency.filter { pinnedTabs.contains($0) }
+        let normal = recency.filter { !pinnedTabs.contains($0) }
+        return pinned + normal
+    }
+
+    @MainActor
+    func runTerminalCommand() async {
+        let command = terminalCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !command.isEmpty else { return }
+        guard !isTerminalRunning else { return }
+
+        isTerminalRunning = true
+        terminalOutput += "$ \(command)\n"
+        do {
+            let output = try await executeShellCommand(command, in: repoPath)
+            terminalOutput += output.isEmpty ? "\n" : "\(output)\n"
+        } catch {
+            terminalOutput += "Error: \(error)\n"
+        }
+        isTerminalRunning = false
+    }
+
+    private func executeShellCommand(_ command: String, in directory: String) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-lc", command]
+            process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe
+
+            process.terminationHandler = { proc in
+                let stdoutData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                let stderrData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                let stdout = String(decoding: stdoutData, as: UTF8.self)
+                let stderr = String(decoding: stderrData, as: UTF8.self)
+                let merged = stdout + stderr
+                if proc.terminationStatus == 0 {
+                    continuation.resume(returning: merged.trimmingCharacters(in: .newlines))
+                } else {
+                    continuation.resume(throwing: NSError(
+                        domain: "TerminalError",
+                        code: Int(proc.terminationStatus),
+                        userInfo: [NSLocalizedDescriptionKey: merged.trimmingCharacters(in: .newlines)]
+                    ))
+                }
+            }
+
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
         }
     }
 

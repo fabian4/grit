@@ -11,6 +11,7 @@ struct DiffTextView: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
+        scrollView.drawsBackground = false
 
         let textView = NSTextView()
         textView.isEditable = isEditable
@@ -19,6 +20,8 @@ struct DiffTextView: NSViewRepresentable {
         textView.usesFindPanel = true
         textView.allowsUndo = true
         textView.backgroundColor = .clear
+        textView.textColor = NSColor(calibratedWhite: 0.88, alpha: 1.0)
+        textView.insertionPointColor = NSColor(calibratedWhite: 0.88, alpha: 1.0)
         textView.textContainerInset = NSSize(width: 6, height: 6)
         textView.font = NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         textView.delegate = context.coordinator
@@ -51,7 +54,8 @@ struct DiffTextView: NSViewRepresentable {
 
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
-            .paragraphStyle: paragraphStyle
+            .paragraphStyle: paragraphStyle,
+            .foregroundColor: NSColor(calibratedWhite: 0.88, alpha: 1.0)
         ]
 
         let result = NSMutableAttributedString()

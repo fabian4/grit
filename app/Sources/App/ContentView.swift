@@ -30,13 +30,13 @@ private extension ContentView {
     var panelArea: some View {
         VStack(spacing: 0) {
             TopBar(viewModel: viewModel)
-            ResizableSplitView(ratio: $splitRatio, minLeft: 210, minRight: 520) {
+            ResizableSplitView(ratio: $splitRatio, minLeft: 196, minRight: 540) {
                 LeftPanel(viewModel: viewModel)
             } right: {
                 MainPanel(viewModel: viewModel)
             }
             BottomPanel(viewModel: viewModel)
-                .frame(height: 168)
+                .frame(height: 116)
         }
     }
 }
