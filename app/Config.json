@@ -1,4 +1,4 @@
 {
-  "splitRatio": 0.3,
-  "diffView": "unified"
+  "splitRatio": 0.24,
+  "diffView": "sideBySide"
 }

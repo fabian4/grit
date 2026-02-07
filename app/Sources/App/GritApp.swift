@@ -47,34 +47,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func configureWindow(_ window: NSWindow) {
         window.styleMask.insert([.titled, .resizable, .miniaturizable, .closable])
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.isMovableByWindowBackground = true
+        window.titlebarAppearsTransparent = false
+        window.isMovableByWindowBackground = false
         window.tabbingMode = .disallowed
         window.toolbar = nil
-        window.backgroundColor = NSColor(calibratedRed: 0.15, green: 0.16, blue: 0.20, alpha: 1.0)
-        window.titlebarSeparatorStyle = .none
-        window.styleMask.insert(.fullSizeContentView)
+        window.backgroundColor = NSColor(calibratedRed: 0.10, green: 0.12, blue: 0.17, alpha: 1.0)
+        window.titlebarSeparatorStyle = .automatic
+        window.styleMask.remove(.fullSizeContentView)
         window.collectionBehavior.remove(.fullScreenAuxiliary)
         window.collectionBehavior.insert(.fullScreenPrimary)
         NSApp.appearance = NSAppearance(named: .darkAqua)
         window.appearance = NSAppearance(named: .darkAqua)
-
-        setSystemTrafficLights(hidden: false, for: window)
-    }
-
-    func windowDidEnterFullScreen(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow else { return }
-        DispatchQueue.main.async { self.setSystemTrafficLights(hidden: false, for: window) }
-    }
-
-    func windowDidExitFullScreen(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow else { return }
-        DispatchQueue.main.async { self.setSystemTrafficLights(hidden: false, for: window) }
-    }
-
-    func windowDidBecomeMain(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow else { return }
-        setSystemTrafficLights(hidden: false, for: window)
     }
 
     func window(
@@ -84,11 +67,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         var options = proposedOptions
         options.remove(.autoHideToolbar)
         return options
-    }
-
-    private func setSystemTrafficLights(hidden: Bool, for window: NSWindow) {
-        window.standardWindowButton(.closeButton)?.isHidden = hidden
-        window.standardWindowButton(.miniaturizeButton)?.isHidden = hidden
-        window.standardWindowButton(.zoomButton)?.isHidden = hidden
     }
 }

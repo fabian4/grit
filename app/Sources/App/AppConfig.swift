@@ -4,7 +4,7 @@ struct AppConfig: Codable {
     let splitRatio: Double
     let diffView: DiffViewMode
 
-    static let `default` = AppConfig(splitRatio: 0.3, diffView: .unified)
+    static let `default` = AppConfig(splitRatio: 0.24, diffView: .sideBySide)
     static let shared: AppConfig = AppConfig.load()
 
     private static func load() -> AppConfig {

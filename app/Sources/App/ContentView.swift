@@ -13,9 +13,9 @@ struct ContentView: View {
             AppTheme.jetbrainsGlow
                 .ignoresSafeArea()
             panelArea
+                .padding(0)
         }
         .frame(minWidth: 900, minHeight: 600)
-        .tint(AppTheme.accent)
         .environment(\.colorScheme, .dark)
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
@@ -30,14 +30,13 @@ private extension ContentView {
     var panelArea: some View {
         VStack(spacing: 0) {
             TopBar(viewModel: viewModel)
-            ResizableSplitView(ratio: $splitRatio, minLeft: 180, minRight: 400) {
+            ResizableSplitView(ratio: $splitRatio, minLeft: 210, minRight: 520) {
                 LeftPanel(viewModel: viewModel)
             } right: {
                 MainPanel(viewModel: viewModel)
             }
-            Divider()
-            BottomPanel()
-                .frame(minHeight: 180, maxHeight: 260)
+            BottomPanel(viewModel: viewModel)
+                .frame(height: 168)
         }
     }
 }

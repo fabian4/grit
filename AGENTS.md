@@ -48,15 +48,19 @@ Use Peekaboo for visual verification when iterating on macOS UI.
 - Preconditions:
 - `peekaboo` is installed (`peekaboo --version`).
 - Accessibility and Screen Recording permissions are granted (`peekaboo permissions --json`).
-- App is launched via `make run`.
+- App is launched from local build output to avoid Dock/app-cache confusion:
+  - `./app/.build/debug/Grit.app/Contents/MacOS/Grit`
 
 - Recommended capture flow:
-- List the app window and read its `window_id`:
-  - `peekaboo window list --app Grit --json > /tmp/grit-ui-window.json`
-  - `W=$(jq -r '.data.windows[0].window_id' /tmp/grit-ui-window.json)`
-- Capture by `window_id` (do not rely on app-name auto selection):
-  - `peekaboo image --window-id "$W" --mode window --path /tmp/grit-ui.png`
+- Launch local app and keep PID:
+  - `./app/.build/debug/Grit.app/Contents/MacOS/Grit >/tmp/grit-ui.log 2>&1 &`
+  - `APP_PID=$!`
+- List windows by PID and get bounds:
+  - `peekaboo window list --pid "$APP_PID" --json > /tmp/grit-ui-window.json`
+- Capture using native `screencapture -R` from bounds in JSON.
 
 - Notes:
-- Capturing by app name can select the wrong surface (for example, a thin titlebar-only layer).
+- `peekaboo image --mode window` may capture the wrong surface on multi-display setups.
+- `peekaboo image --window-id ...` can return `WINDOW_NOT_FOUND` in some versions.
+- Prefer PID-scoped window listing + rectangle capture for deterministic results.
 - For before/after comparisons, save separate files (for example, `/tmp/grit-ui-before.png` and `/tmp/grit-ui-after.png`) and compare hashes or images.
