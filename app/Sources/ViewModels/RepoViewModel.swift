@@ -4,6 +4,33 @@ struct StatusItem: Identifiable, Hashable {
     let id: String
     let status: String
     let path: String
+    let additions: Int
+    let deletions: Int
+
+    var stagedCode: Character {
+        Array(status).first ?? " "
+    }
+
+    var unstagedCode: Character {
+        if status.count < 2 { return " " }
+        return Array(status)[1]
+    }
+
+    var isStaged: Bool {
+        stagedCode != " " && stagedCode != "?"
+    }
+
+    var isUnstaged: Bool {
+        status == "??" || unstagedCode != " "
+    }
+
+    var isUntracked: Bool {
+        status == "??"
+    }
+
+    var isConflicted: Bool {
+        status.contains("U")
+    }
 
     var display: String {
         if status == "??" {
@@ -56,16 +83,33 @@ enum LeftPanelMode: String, Hashable, CaseIterable, Identifiable {
     }
 }
 
+enum DiffScope: String, Hashable, CaseIterable, Identifiable {
+    case unstaged
+    case staged
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .unstaged: return "Unstaged"
+        case .staged: return "Staged"
+        }
+    }
+}
+
 final class RepoViewModel: ObservableObject {
     static let shared = RepoViewModel()
     @Published var repoPath: String
     @Published var output: String = ""
+    @Published var lastErrorMessage: String? = nil
     @Published var isRepoOpen: Bool = false
+    @Published var isBusy: Bool = false
     @Published var statusItems: [StatusItem] = []
     @Published var fileTree: [FileNode] = []
     @Published var selectedFileID: String? = nil
     @Published var fileContent: String = ""
     @Published var selectedPath: String? = nil
+    @Published var selectedDiffScope: DiffScope = .unstaged
     @Published var openTabs: [String] = []
     @Published var pinnedTabs: Set<String> = []
     @Published var detailOutput: String = ""
@@ -79,6 +123,8 @@ final class RepoViewModel: ObservableObject {
     @Published var terminalOutput: String = "Grit terminal ready.\n"
     @Published var terminalCommand: String = "pwd"
     @Published var isTerminalRunning: Bool = false
+    @Published var currentBranch: String = "-"
+    @Published var commitMessage: String = ""
 
     private let client = WorkspaceClient.shared
     private var fileIndex: [String: FileNode] = [:]
@@ -90,18 +136,52 @@ final class RepoViewModel: ObservableObject {
     }
 
     @MainActor
+    private func clearError() {
+        lastErrorMessage = nil
+    }
+
+    @MainActor
+    private func reportError(_ error: Error) {
+        let message: String
+        if let nserr = error as NSError?, let desc = nserr.userInfo[NSLocalizedDescriptionKey] as? String, !desc.isEmpty {
+            message = desc
+        } else {
+            message = String(describing: error)
+        }
+        lastErrorMessage = message
+    }
+
+    @MainActor
+    private func beginBusy() {
+        isBusy = true
+    }
+
+    @MainActor
+    private func endBusy() {
+        isBusy = false
+    }
+
+    @MainActor
     func openRepo() async {
-        let path = repoPath
+        await openRepo(path: repoPath)
+    }
+
+    @MainActor
+    func openRepo(path: String) async {
+        beginBusy()
+        defer { endBusy() }
         do {
             try await WorkspaceClient.shared.open(path: path)
             let root = try await WorkspaceClient.shared.root()
             repoPath = root
             output = "Opened: \(root)"
             isRepoOpen = true
+            clearError()
             await refreshStatus()
             await refreshFiles()
         } catch {
             output = String(describing: error)
+            reportError(error)
             isRepoOpen = false
         }
     }
@@ -112,20 +192,40 @@ final class RepoViewModel: ObservableObject {
     }
 
     @MainActor
+    func refresh() async {
+        beginBusy()
+        defer { endBusy() }
+        await refreshStatus()
+        await refreshFiles()
+    }
+
+    @MainActor
     func refreshStatus() async {
         do {
             let result = try await WorkspaceClient.shared.status()
+            let numstat = try await WorkspaceClient.shared.statusNumstat()
             output = result
-            statusItems = parseStatus(result)
-            if selectedPath == nil {
+            statusItems = parseStatus(result, numstat: numstat)
+            currentBranch = (try? await WorkspaceClient.shared.branchName()) ?? "-"
+            if statusItems.isEmpty {
+                selectedPath = nil
+                selectedFileID = nil
+                detailOutput = ""
+                fileContent = ""
+                hunks = []
+                selectedHunkID = nil
+                diffLines = []
+            } else if selectedPath == nil {
                 selectedPath = statusItems.first?.path
             }
             if let path = selectedPath {
                 activateTab(path)
             }
             await loadDiffForSelection()
+            clearError()
         } catch {
             output = String(describing: error)
+            reportError(error)
         }
     }
 
@@ -138,21 +238,27 @@ final class RepoViewModel: ObservableObject {
             fileTree = rootNode.children ?? []
             fileIndex = buildIndex(from: fileTree)
             treeOrder = flattenTree(fileTree)
+            clearError()
         } catch {
             fileTree = []
             fileIndex = [:]
             treeOrder = []
+            reportError(error)
         }
     }
 
     @MainActor
     func runDiff() async {
+        beginBusy()
+        defer { endBusy() }
         do {
             let result = try await WorkspaceClient.shared.diff()
             detailOutput = result
             diffLines = parseDiffLines(result)
+            clearError()
         } catch {
             output = String(describing: error)
+            reportError(error)
         }
     }
 
@@ -166,26 +272,61 @@ final class RepoViewModel: ObservableObject {
             return
         }
         do {
-            let result = try await WorkspaceClient.shared.diff(path: path)
+            let item = statusItems.first(where: { $0.path == path })
+            let scope = selectedDiffScope
+            let result: String
+            switch scope {
+            case .staged:
+                if item?.isUntracked == true {
+                    result = ""
+                } else {
+                    result = try await WorkspaceClient.shared.diffCached(path: path)
+                }
+            case .unstaged:
+                result = try await WorkspaceClient.shared.diff(path: path)
+            }
             detailOutput = result
             hunks = []
             selectedHunkID = nil
             diffLines = parseDiffLines(result)
-            if result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                if let node = fileIndex[path], !node.isDirectory {
-                    if let content = try? String(contentsOfFile: node.absolutePath, encoding: .utf8) {
-                        detailOutput = content
-                        diffLines = parsePlainLines(content, withLineNumbers: true)
-                    }
-                }
+            if diffLines.isEmpty, let item, item.isUntracked, scope == .unstaged {
+                synthesizeUntrackedDiff(relativePath: path)
             }
+            clearError()
         } catch {
             detailOutput = ""
             hunks = []
             selectedHunkID = nil
             diffLines = []
             output = String(describing: error)
+            reportError(error)
         }
+    }
+
+    @MainActor
+    private func synthesizeUntrackedDiff(relativePath: String) {
+        guard let node = fileIndex[relativePath], !node.isDirectory else { return }
+        guard let content = try? String(contentsOfFile: node.absolutePath, encoding: .utf8) else { return }
+
+        let lines = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var out: [DiffLine] = []
+        var counter = 0
+
+        func addLine(kind: DiffLine.Kind, old: Int?, new: Int?, text: String) {
+            let id = "\(counter)-synth"
+            counter += 1
+            out.append(DiffLine(id: id, kind: kind, oldLine: old, newLine: new, text: text))
+        }
+
+        addLine(kind: .hunk, old: nil, new: nil, text: "@@ -0,0 +1,\(max(lines.count, 1)) @@")
+        var newLine = 1
+        for line in lines {
+            addLine(kind: .added, old: nil, new: newLine, text: "+\(line)")
+            newLine += 1
+        }
+
+        detailOutput = content
+        diffLines = out
     }
 
     @MainActor
@@ -212,9 +353,11 @@ final class RepoViewModel: ObservableObject {
         do {
             fileContent = try String(contentsOfFile: node.absolutePath, encoding: .utf8)
             diffLines = parsePlainLines(fileContent, withLineNumbers: true)
+            clearError()
         } catch {
             fileContent = "Unable to load file: \(node.relativePath)"
             diffLines = []
+            reportError(error)
         }
     }
 
@@ -247,9 +390,11 @@ final class RepoViewModel: ObservableObject {
         do {
             fileContent = try String(contentsOfFile: node.absolutePath, encoding: .utf8)
             diffLines = parsePlainLines(fileContent, withLineNumbers: true)
+            clearError()
         } catch {
             fileContent = "Unable to load file: \(node.relativePath)"
             diffLines = []
+            reportError(error)
         }
     }
 
@@ -348,8 +493,9 @@ final class RepoViewModel: ObservableObject {
         }
     }
 
-    private func parseStatus(_ raw: String) -> [StatusItem] {
-        raw.split(separator: "\n").compactMap { line in
+    private func parseStatus(_ raw: String, numstat: String) -> [StatusItem] {
+        let stats = parseNumstat(numstat)
+        return raw.split(separator: "\n").compactMap { line -> StatusItem? in
             if line.count < 3 { return nil }
             let status = String(line.prefix(2))
             var pathPart = String(line.dropFirst(3))
@@ -357,8 +503,28 @@ final class RepoViewModel: ObservableObject {
                 pathPart = String(pathPart[arrowRange.upperBound...])
             }
             let id = "\(status):\(pathPart)"
-            return StatusItem(id: id, status: status, path: pathPart)
+            let pair: (Int, Int) = stats[pathPart] ?? (0, 0)
+            return StatusItem(
+                id: id,
+                status: status,
+                path: pathPart,
+                additions: pair.0,
+                deletions: pair.1
+            )
         }
+    }
+
+    private func parseNumstat(_ raw: String) -> [String: (Int, Int)] {
+        var map: [String: (Int, Int)] = [:]
+        for line in raw.split(separator: "\n", omittingEmptySubsequences: true) {
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
+            if parts.count < 3 { continue }
+            let adds = Int(parts[0]) ?? 0
+            let dels = Int(parts[1]) ?? 0
+            let path = String(parts[2])
+            map[path] = (adds, dels)
+        }
+        return map
     }
 
     private func parseHunks(_ raw: String) -> [DiffHunk] {
@@ -551,6 +717,203 @@ final class RepoViewModel: ObservableObject {
             }
         }
         return statusItems.sorted { $0.path.lowercased() < $1.path.lowercased() }
+    }
+
+    var stagedCount: Int {
+        statusItems.filter(\.isStaged).count
+    }
+
+    var stagedItems: [StatusItem] {
+        statusItems.filter(\.isStaged)
+    }
+
+    var unstagedItems: [StatusItem] {
+        statusItems.filter(\.isUnstaged)
+    }
+
+    var unstagedCount: Int {
+        statusItems.filter(\.isUnstaged).count
+    }
+
+    var untrackedCount: Int {
+        statusItems.filter(\.isUntracked).count
+    }
+
+    var conflictedCount: Int {
+        statusItems.filter(\.isConflicted).count
+    }
+
+    var totalAdditions: Int {
+        statusItems.reduce(0) { $0 + $1.additions }
+    }
+
+    var totalDeletions: Int {
+        statusItems.reduce(0) { $0 + $1.deletions }
+    }
+
+    @MainActor
+    func toggleStage(item: StatusItem) async {
+        beginBusy()
+        defer { endBusy() }
+        do {
+            if item.isStaged {
+                try await WorkspaceClient.shared.unstage(path: item.path)
+            } else {
+                try await WorkspaceClient.shared.stage(path: item.path)
+            }
+            await refreshStatus()
+            clearError()
+        } catch {
+            output = String(describing: error)
+            reportError(error)
+        }
+    }
+
+    @MainActor
+    func stageAll() async {
+        beginBusy()
+        defer { endBusy() }
+        do {
+            try await WorkspaceClient.shared.stageAll()
+            await refreshStatus()
+            clearError()
+        } catch {
+            output = String(describing: error)
+            reportError(error)
+        }
+    }
+
+    @MainActor
+    func unstageAll() async {
+        beginBusy()
+        defer { endBusy() }
+        do {
+            try await WorkspaceClient.shared.unstageAll()
+            await refreshStatus()
+            clearError()
+        } catch {
+            output = String(describing: error)
+            reportError(error)
+        }
+    }
+
+    @MainActor
+    func discard(path: String) async {
+        beginBusy()
+        defer { endBusy() }
+        do {
+            _ = try? await saveDiscardBackupIfNeeded(relativePath: path)
+            try await WorkspaceClient.shared.discard(path: path)
+            await refreshStatus()
+            await refreshFiles()
+            clearError()
+        } catch {
+            output = String(describing: error)
+            reportError(error)
+        }
+    }
+
+    @MainActor
+    func discard(item: StatusItem) async {
+        beginBusy()
+        defer { endBusy() }
+        do {
+            if item.isUntracked {
+                // Safer than `git clean`: send to Trash when possible.
+                let absolute = URL(fileURLWithPath: repoPath).appendingPathComponent(item.path)
+                do {
+                    _ = try FileManager.default.trashItem(at: absolute, resultingItemURL: nil)
+                } catch {
+                    try await WorkspaceClient.shared.clean(path: item.path)
+                }
+            } else {
+                _ = try? await saveDiscardBackupIfNeeded(relativePath: item.path)
+                try await WorkspaceClient.shared.discard(path: item.path)
+            }
+            await refreshStatus()
+            await refreshFiles()
+            clearError()
+        } catch {
+            output = String(describing: error)
+            reportError(error)
+        }
+    }
+
+    @MainActor
+    func discardAll() async {
+        beginBusy()
+        defer { endBusy() }
+        do {
+            try await WorkspaceClient.shared.discardAll()
+            await refreshStatus()
+            await refreshFiles()
+            clearError()
+        } catch {
+            output = String(describing: error)
+            reportError(error)
+        }
+    }
+
+    @MainActor
+    func commit(title: String, body: String) async {
+        beginBusy()
+        defer { endBusy() }
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+        do {
+            let trimmedBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
+            try await WorkspaceClient.shared.commit(
+                title: trimmedTitle,
+                body: trimmedBody.isEmpty ? nil : trimmedBody
+            )
+            await refreshStatus()
+            await refreshFiles()
+            clearError()
+        } catch {
+            output = String(describing: error)
+            reportError(error)
+        }
+    }
+
+    var commitTitle: String {
+        commitMessage
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .first
+            .map(String.init)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    var commitBody: String {
+        let lines = commitMessage.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard lines.count > 1 else { return "" }
+        return lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var canCommit: Bool {
+        isRepoOpen && !isBusy && stagedCount > 0 && !commitTitle.isEmpty
+    }
+
+    @MainActor
+    func commitFromMessage() async {
+        guard canCommit else { return }
+        await commit(title: commitTitle, body: commitBody)
+        if lastErrorMessage == nil {
+            commitMessage = ""
+        }
+    }
+
+    @MainActor
+    private func saveDiscardBackupIfNeeded(relativePath: String) async throws -> String? {
+        let patch = try await WorkspaceClient.shared.diff(path: relativePath)
+        let trimmed = patch.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        let safePath = relativePath.replacingOccurrences(of: "/", with: "__")
+        let fileName = "grit-discard-\(stamp)-\(safePath).patch"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        try trimmed.write(to: url, atomically: true, encoding: .utf8)
+        return url.path
     }
 
     var groupedStatusSections: [StatusSection] {

@@ -12,7 +12,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
             AppTheme.jetbrainsGlow
                 .ignoresSafeArea()
-            panelArea
+            WorkspaceShell(viewModel: viewModel, splitRatio: $splitRatio)
                 .padding(0)
         }
         .frame(minWidth: 900, minHeight: 600)
@@ -20,23 +20,6 @@ struct ContentView: View {
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             isPathFocused = true
-            Task { await viewModel.openRepo() }
-        }
-    }
-}
-
-private extension ContentView {
-    @ViewBuilder
-    var panelArea: some View {
-        VStack(spacing: 0) {
-            TopBar(viewModel: viewModel)
-            ResizableSplitView(ratio: $splitRatio, minLeft: 196, minRight: 540) {
-                LeftPanel(viewModel: viewModel)
-            } right: {
-                MainPanel(viewModel: viewModel)
-            }
-            BottomPanel(viewModel: viewModel)
-                .frame(height: 96)
         }
     }
 }

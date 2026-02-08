@@ -6,74 +6,81 @@ struct TopBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 5) {
-                Image(systemName: "line.3.horizontal")
+            HStack(spacing: 6) {
                 Image(systemName: "folder")
-                Text("untitled-project")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(repoName)
                     .font(.system(size: 11.5, weight: .semibold))
-
-                HeaderIcon(symbol: "tray.and.arrow.up")
-                HeaderIcon(symbol: "arrow.triangle.branch")
+                    .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                Text(viewModel.isRepoOpen ? viewModel.repoPath : "No repo open")
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
-            .foregroundStyle(AppTheme.chromeMuted.opacity(0.92))
-            .frame(width: 248, alignment: .leading)
+            .frame(width: 560, alignment: .leading)
             .padding(.leading, 72)
 
-            Rectangle()
-                .fill(AppTheme.chromeDivider)
-                .frame(width: 1, height: 14)
-                .padding(.horizontal, 5)
-
-            HStack(spacing: 5) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(AppTheme.chromeMuted)
-                Text("Search everywhere")
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                Spacer(minLength: 0)
-                Text("Double Shift")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.82))
-            }
-            .padding(.horizontal, 8)
-            .frame(width: 330, height: 20)
-            .background(AppTheme.fieldFill)
-            .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-
             Spacer(minLength: 0)
-
-            Rectangle()
-                .fill(AppTheme.chromeDivider)
-                .frame(width: 1, height: 18)
-                .padding(.horizontal, 6)
 
             HStack(spacing: 5) {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.branch")
-                    Text("master")
+                    Text(viewModel.currentBranch)
                 }
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted.opacity(0.86))
 
-                HeaderIcon(symbol: "play.fill", tint: AppTheme.accent)
-                HeaderIcon(symbol: "ladybug.fill")
-                HeaderIcon(symbol: "gearshape")
+                Button("Refresh") { Task { await viewModel.refresh() } }
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeText)
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(AppTheme.chromeDarkElevated)
+                    .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
+                    .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
-                Button("Open") {
-                    Task { await viewModel.openRepo() }
-                }
+                Button("Open") { openRepoPicker() }
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.white)
                 .buttonStyle(.plain)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
                 .background(AppTheme.accent)
+                .opacity(viewModel.isBusy ? 0.6 : 1.0)
+                .disabled(viewModel.isBusy)
+
+                if viewModel.isBusy {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.65)
+                        .frame(width: 14, height: 14)
+                        .tint(AppTheme.chromeMuted.opacity(0.8))
+                }
             }
             .padding(.trailing, 6)
         }
         .frame(height: 26)
         .background(AppTheme.chromeDark.allowsHitTesting(false))
         .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
+    }
+
+    private var repoName: String {
+        guard viewModel.isRepoOpen else { return "Grit" }
+        return URL(fileURLWithPath: viewModel.repoPath).lastPathComponent
+    }
+
+    private func openRepoPicker() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Open Repo"
+        panel.message = "Choose a local Git repository"
+        if panel.runModal() == .OK, let url = panel.url {
+            Task { await viewModel.openRepo(path: url.path) }
+        }
     }
 }
 
@@ -161,63 +168,220 @@ private struct RailModeIcon: View {
 
 struct LeftPanel: View {
     private enum PrefKey {
-        static let commitScope = "ui.commit.scope"
-        static let projectChangedOnly = "ui.project.changedOnly"
+        static let leftTab = "ui.left.tab"
     }
 
     @ObservedObject var viewModel: RepoViewModel
-    @State private var sidebarMode: SidebarMode = .project
-    @State private var commitScope: CommitScope = {
-        let raw = UserDefaults.standard.string(forKey: PrefKey.commitScope)
-        return CommitScope(rawValue: raw ?? "") ?? .unstaged
+    @State private var leftTab: LeftPanelMode = {
+        let raw = UserDefaults.standard.string(forKey: PrefKey.leftTab)
+        return LeftPanelMode(rawValue: raw ?? "") ?? .changes
     }()
-    @State private var showChangedOnly: Bool = UserDefaults.standard.bool(forKey: PrefKey.projectChangedOnly)
-    @State private var amendCommit: Bool = false
-    @State private var commitMessage: String = "Add AppTheme and enhance UI components with new styling, and layout"
-    @State private var fileQuery: String = ""
-    @State private var collapsedProjectDirectories: Set<String> = []
-    @State private var collapsedCommitDirectories: Set<String> = []
+    @State private var query: String = ""
+    @State private var commitMessage: String = ""
+    @State private var pendingDiscardItem: StatusItem? = nil
+    @State private var showGitError: Bool = false
+    @State private var keyMonitor: Any? = nil
 
     var body: some View {
-        HStack(spacing: 0) {
-            ToolWindowRail(selected: sidebarMode, onSelect: switchMode)
-
-            VStack(alignment: .leading, spacing: 0) {
-                if sidebarMode == .project {
-                    projectPanel
-                } else {
-                    commitPanel
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            Divider().overlay(AppTheme.chromeDivider)
+            if leftTab == .changes {
+                changesPanel
+            } else {
+                filesPanel
             }
-            .background(AppTheme.sidebarDark)
-            .overlay(alignment: .trailing) { Rectangle().fill(AppTheme.chromeDivider).frame(width: 1) }
         }
+        .background(AppTheme.sidebarDark)
+        .overlay(alignment: .trailing) { Rectangle().fill(AppTheme.chromeDivider).frame(width: 1) }
         .onAppear {
-            switchMode(.project)
-            prepareInitialCollapsedState()
+            viewModel.leftMode = leftTab
+            installKeyMonitor()
         }
-        .onChange(of: commitScope) { newValue in
-            UserDefaults.standard.set(newValue.rawValue, forKey: PrefKey.commitScope)
+        .onChange(of: leftTab) { newValue in
+            UserDefaults.standard.set(newValue.rawValue, forKey: PrefKey.leftTab)
+            viewModel.leftMode = newValue
+            if newValue == .changes {
+                Task { await viewModel.loadDiffForSelection() }
+            } else {
+                Task { await viewModel.loadFileForSelection() }
+            }
         }
-        .onChange(of: showChangedOnly) { newValue in
-            UserDefaults.standard.set(newValue, forKey: PrefKey.projectChangedOnly)
+        .onChange(of: viewModel.lastErrorMessage) { _ in
+            showGitError = viewModel.lastErrorMessage != nil
         }
-        .onChange(of: viewModel.selectedFileID) { _ in
-            guard sidebarMode == .project else { return }
-            guard viewModel.leftMode == .files else { return }
-            Task { await viewModel.loadFileForSelection() }
+        .onDisappear {
+            removeKeyMonitor()
+        }
+        .alert(item: $pendingDiscardItem) { item in
+            Alert(
+                title: Text(item.isUntracked ? "Delete untracked file?" : "Discard changes?"),
+                message: Text(item.path),
+                primaryButton: .destructive(Text(item.isUntracked ? "Delete" : "Discard")) {
+                    Task { await viewModel.discard(item: item) }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .alert("Git Error", isPresented: $showGitError) {
+            Button("OK") { viewModel.lastErrorMessage = nil }
+        } message: {
+            Text(viewModel.lastErrorMessage ?? "")
         }
     }
 
-    @ViewBuilder
-    private var projectPanel: some View {
-        panelHeader(title: "Project", leadingIcon: "folder", trailingIcon: "plus")
+    private var header: some View {
+        HStack(spacing: 6) {
+            MVPLeftTabs(selection: $leftTab)
+            Spacer(minLength: 0)
+            if leftTab == .changes {
+                Toggle("Group", isOn: $viewModel.groupDiffByFolder)
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted)
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 28)
+    }
 
-        HStack(spacing: 5) {
+    private var changesPanel: some View {
+        VStack(spacing: 0) {
+            searchField(placeholder: "Filter files", text: $query)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+
+            HStack(spacing: 10) {
+                Text("Changes: \(filteredStatusItems.count)")
+                Text("Staged: \(viewModel.stagedCount)")
+                Spacer(minLength: 0)
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+            .padding(.horizontal, 8)
+            .padding(.bottom, 6)
+
+            HStack(spacing: 8) {
+                Button("Stage All") { Task { await viewModel.stageAll() } }
+                Button("Unstage All") { Task { await viewModel.unstageAll() } }
+                Spacer(minLength: 0)
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(AppTheme.chromeText)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+
+            Divider().overlay(AppTheme.chromeDivider)
+
+            ScrollView {
+                if viewModel.statusItems.isEmpty {
+                    EmptyLeftState(title: "Working tree clean", subtitle: nil)
+                        .padding(.top, 18)
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(filteredStatusItems) { item in
+                            MVPChangeRow(
+                                item: item,
+                                selected: item.path == viewModel.selectedPath,
+                                onToggleStage: { Task { await viewModel.toggleStage(item: item) } },
+                                onSelect: {
+                                    viewModel.selectedPath = item.path
+                                    viewModel.activateTab(item.path)
+                                    Task { await viewModel.loadDiffForSelection() }
+                                },
+                                onDiscard: { requestDiscard(item) }
+                            )
+                            .contextMenu { statusItemContextMenu(item) }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+
+            Divider().overlay(AppTheme.chromeDivider)
+            commitBox
+        }
+    }
+
+    private var filesPanel: some View {
+        VStack(spacing: 0) {
+            searchField(placeholder: "Filter files", text: $query)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+            Divider().overlay(AppTheme.chromeDivider)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(filteredFileTreeRows, id: \.node.id) { entry in
+                        ProjectTreeRow(
+                            entry: entry,
+                            fileStatus: nil,
+                            isCollapsed: false,
+                            isSelected: entry.node.id == viewModel.selectedFileID,
+                            onTap: {
+                                guard !entry.node.isDirectory else { return }
+                                Task { await viewModel.selectAndLoadFile(path: entry.node.relativePath, id: entry.node.id) }
+                            }
+                        )
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private var commitBox: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Commit Message")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeMuted)
+
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $commitMessage)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.chromeText)
+                    .padding(4)
+                    .frame(height: 64)
+                    .background(AppTheme.editorBackground)
+                    .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+
+                if commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("Write a commit message")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.8))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 10)
+                        .allowsHitTesting(false)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Commit") { performCommit() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11.5, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 78, height: 21)
+                    .background(AppTheme.accent)
+                    .opacity(canCommit ? 1.0 : 0.45)
+                    .disabled(!canCommit)
+                    .keyboardShortcut(.return, modifiers: .command)
+
+                Spacer(minLength: 0)
+                Text("branch \(viewModel.currentBranch)")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+    }
+
+    private func searchField(placeholder: String, text: Binding<String>) -> some View {
+        HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted)
-            TextField("Filter files", text: $fileQuery)
+            TextField(placeholder, text: text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AppTheme.chromeText)
@@ -226,378 +390,25 @@ struct LeftPanel: View {
         .frame(height: 24)
         .background(AppTheme.fieldFill)
         .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
-
-        HStack(spacing: 8) {
-            Button {
-                showChangedOnly.toggle()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: showChangedOnly ? "checkmark.circle.fill" : "circle")
-                    Text("Changed only")
-                }
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(showChangedOnly ? AppTheme.accent : AppTheme.chromeMuted)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(showChangedOnly ? AppTheme.chromeDarkElevated : Color.clear)
-                .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
-
-        Divider().overlay(AppTheme.chromeDivider)
-
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 4) {
-                    Image(systemName: isProjectCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(AppTheme.chromeMuted)
-                    Image(systemName: "folder")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted)
-            Text("grit")
-                        .font(.system(size: 12.5, weight: .bold))
-                        .foregroundStyle(AppTheme.chromeText)
-                    Text("~/Projects/grit")
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 8)
-                .frame(height: 24)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    toggleProjectDirectory(id: "__root__")
-                }
-
-                if !isProjectCollapsed {
-                    ForEach(filteredProjectTreeRows, id: \.node.id) { entry in
-                        ProjectTreeRow(
-                            entry: entry,
-                            fileStatus: statusByPath[entry.node.relativePath],
-                            isCollapsed: collapsedProjectDirectories.contains(entry.node.id),
-                            isSelected: entry.node.id == viewModel.selectedFileID,
-                            onTap: {
-                                if entry.node.isDirectory {
-                                    toggleProjectDirectory(id: entry.node.id)
-                                } else {
-                                    Task { await viewModel.selectAndLoadFile(path: entry.node.relativePath, id: entry.node.id) }
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-            .padding(.vertical, 2)
-        }
     }
 
-    @ViewBuilder
-    private var commitPanel: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "arrow.triangle.branch")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted)
-            Text("Commit")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(AppTheme.chromeText)
-            Button("Commit") {}
-                .buttonStyle(.plain)
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeText)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(AppTheme.chromeDarkElevated)
-                .overlay(Rectangle().stroke(AppTheme.accent.opacity(0.55), lineWidth: 1))
-            Spacer(minLength: 0)
-            Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(AppTheme.chromeMuted)
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 26)
-
-        Divider().overlay(AppTheme.chromeDivider)
-
-        HStack(spacing: 6) {
-            Image(systemName: "square")
-                .font(.system(size: 11, weight: .regular))
-                .foregroundStyle(AppTheme.chromeMuted)
-            Rectangle()
-                .fill(AppTheme.chromeDivider.opacity(0.8))
-                .frame(width: 1, height: 12)
-            CommitToolIcon(symbol: "arrow.triangle.2.circlepath")
-            CommitToolIcon(symbol: "arrow.uturn.backward")
-            CommitToolIcon(symbol: "tray.and.arrow.down")
-            CommitToolIcon(symbol: "infinity", tint: Color.purple.opacity(0.85))
-            CommitToolIcon(symbol: "eye")
-            CommitToolIcon(symbol: "chevron.down")
-            CommitToolIcon(symbol: "xmark")
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 22)
-
-        Divider().overlay(AppTheme.chromeDivider)
-
-        VStack(spacing: 0) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 1) {
-                    CommitSectionHeader(
-                        title: "Changes",
-                        count: changedStatusItems.count,
-                        expanded: !collapsedCommitDirectories.contains("__section_changed__")
-                    ) {
-                        toggleCommitDirectory(id: "__section_changed__")
-                    }
-                    if !collapsedCommitDirectories.contains("__section_changed__") {
-                        ForEach(changedCommitTreeRows, id: \.id) { entry in
-                            CommitTreeRow(
-                                entry: entry,
-                                isCollapsed: collapsedCommitDirectories.contains(entry.id),
-                                isSelected: entry.statusItem?.path == viewModel.selectedPath,
-                                onTap: {
-                                    if entry.isDirectory {
-                                        toggleCommitDirectory(id: entry.id)
-                                    } else if let item = entry.statusItem {
-                                        viewModel.leftMode = .changes
-                                        viewModel.selectedPath = item.path
-                                        viewModel.activateTab(item.path)
-                                        Task { await viewModel.loadDiffForSelection() }
-                                    }
-                                }
-                            )
-                        }
-                    }
-
-                    CommitSectionHeader(
-                        title: "Unversioned Files",
-                        count: untrackedStatusItems.count,
-                        expanded: !collapsedCommitDirectories.contains("__section_untracked__")
-                    ) {
-                        toggleCommitDirectory(id: "__section_untracked__")
-                    }
-                    if !collapsedCommitDirectories.contains("__section_untracked__") {
-                        ForEach(untrackedCommitTreeRows, id: \.id) { entry in
-                            CommitTreeRow(
-                                entry: entry,
-                                isCollapsed: collapsedCommitDirectories.contains(entry.id),
-                                isSelected: entry.statusItem?.path == viewModel.selectedPath,
-                                onTap: {
-                                    if entry.isDirectory {
-                                        toggleCommitDirectory(id: entry.id)
-                                    } else if let item = entry.statusItem {
-                                        viewModel.leftMode = .changes
-                                        viewModel.selectedPath = item.path
-                                        viewModel.activateTab(item.path)
-                                        Task { await viewModel.loadDiffForSelection() }
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-                .padding(.vertical, 3)
-            }
-
-            Divider().overlay(AppTheme.chromeDivider)
-
-            VStack(spacing: 6) {
-                HStack(spacing: 8) {
-                    Toggle("Amend", isOn: $amendCommit)
-                        .toggleStyle(.checkbox)
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted)
-                    Image(systemName: "circle")
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                    Image(systemName: "clock")
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted)
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted)
-                    Spacer(minLength: 0)
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted)
-                }
-                .frame(height: 16)
-
-                TextEditor(text: $commitMessage)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeText)
-                    .padding(4)
-                    .frame(height: 74)
-                    .background(AppTheme.editorBackground)
-                    .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-
-                HStack(spacing: 7) {
-                    Button("Commit") {}
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11.5, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 68, height: 21)
-                        .background(AppTheme.accent)
-
-                    Button("Commit and Push...") {}
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeText)
-                        .frame(width: 118, height: 21)
-                        .background(AppTheme.chromeDarkElevated)
-                        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-
-                    Spacer(minLength: 0)
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                }
-            }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 5)
-            .background(AppTheme.sidebarDark.opacity(0.92))
-        }
+    private var filteredStatusItems: [StatusItem] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q.isEmpty { return viewModel.sortedStatusItems }
+        return viewModel.sortedStatusItems.filter { $0.path.lowercased().contains(q) }
     }
 
-    @ViewBuilder
-    private func panelHeader(title: String, leadingIcon: String, trailingIcon: String?) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: leadingIcon)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted)
-            Text(title)
-                .font(.system(size: 12.5, weight: .bold))
-                .foregroundStyle(AppTheme.chromeText)
-            Spacer(minLength: 0)
-            if let trailingIcon {
-                Button {} label: {
-                    Image(systemName: trailingIcon)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(AppTheme.chromeMuted)
-                        .frame(width: 14, height: 14)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 27)
-    }
-
-    private func switchMode(_ mode: SidebarMode) {
-        sidebarMode = mode
-        switch mode {
-        case .project:
-            viewModel.leftMode = .files
-            ensureProjectSelection()
-            Task { await viewModel.loadFileForSelection() }
-        case .commit:
-            commitScope = .all
-            viewModel.leftMode = .changes
-            ensureCommitSelection()
-            Task { await viewModel.loadDiffForSelection() }
-        }
-    }
-
-    private func ensureProjectSelection() {
-        if let selectedID = viewModel.selectedFileID,
-           let node = findNode(id: selectedID, in: viewModel.fileTree),
-           !node.isDirectory {
-            viewModel.selectedPath = node.relativePath
-            viewModel.activateTab(node.relativePath)
-            return
-        }
-
-        if let firstFile = firstFileNode(in: viewModel.fileTree) {
-            Task { await viewModel.selectAndLoadFile(path: firstFile.relativePath, id: firstFile.id) }
-        }
-    }
-
-    private func ensureCommitSelection() {
-        if let selected = viewModel.selectedPath,
-           scopedStatusItems.contains(where: { $0.path == selected }) {
-            viewModel.activateTab(selected)
-            return
-        }
-
-        if let first = scopedStatusItems.first?.path ?? viewModel.sortedStatusItems.first?.path {
-            viewModel.selectedPath = first
-            viewModel.activateTab(first)
-        }
-    }
-
-    private func firstFileNode(in nodes: [FileNode]) -> FileNode? {
-        for node in nodes {
-            if node.isDirectory {
-                if let child = firstFileNode(in: node.children ?? []) {
-                    return child
-                }
-            } else {
-                return node
-            }
-        }
-        return nil
-    }
-
-    private func findNode(id: String, in nodes: [FileNode]) -> FileNode? {
-        for node in nodes {
-            if node.id == id { return node }
-            if let children = node.children,
-               let match = findNode(id: id, in: children) {
-                return match
-            }
-        }
-        return nil
-    }
-
-    private func prepareInitialCollapsedState() {
-        guard collapsedProjectDirectories.isEmpty else { return }
-        collapsedProjectDirectories = Set(collectDirectoryIDs(nodes: viewModel.fileTree))
-        collapsedProjectDirectories.insert("__root__")
-        collapsedCommitDirectories.insert("__section_untracked__")
-        collapsedCommitDirectories.insert("dir:untracked:__repo_root__")
-    }
-
-    private func collectDirectoryIDs(nodes: [FileNode]) -> [String] {
-        var out: [String] = []
-        for node in nodes {
-            if node.isDirectory {
-                out.append(node.id)
-                out.append(contentsOf: collectDirectoryIDs(nodes: node.children ?? []))
-            }
-        }
-        return out
-    }
-
-    private var isProjectCollapsed: Bool {
-        collapsedProjectDirectories.contains("__root__")
-    }
-
-    private var filteredProjectTreeRows: [FileTreeEntry] {
-        let query = fileQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let prefiltered = showChangedOnly ? filterNodesByChanged(viewModel.fileTree) : viewModel.fileTree
-        let nodes = query.isEmpty ? prefiltered : filteredProjectNodes(prefiltered, query: query)
+    private var filteredFileTreeRows: [FileTreeEntry] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let nodes = q.isEmpty ? viewModel.fileTree : filteredProjectNodes(viewModel.fileTree, query: q)
         return flattenProjectNodes(nodes, depth: 0)
-    }
-
-    private var statusByPath: [String: String] {
-        Dictionary(uniqueKeysWithValues: viewModel.sortedStatusItems.map { ($0.path, $0.status) })
     }
 
     private func flattenProjectNodes(_ nodes: [FileNode], depth: Int) -> [FileTreeEntry] {
         var out: [FileTreeEntry] = []
         for node in nodes {
             out.append(FileTreeEntry(node: node, depth: depth))
-            if node.isDirectory,
-               !collapsedProjectDirectories.contains(node.id),
-               let children = node.children {
+            if node.isDirectory, let children = node.children {
                 out.append(contentsOf: flattenProjectNodes(children, depth: depth + 1))
             }
         }
@@ -626,180 +437,226 @@ struct LeftPanel: View {
         }
     }
 
-    private func filterNodesByChanged(_ nodes: [FileNode]) -> [FileNode] {
-        nodes.compactMap { node in
-            if node.isDirectory {
-                let children = filterNodesByChanged(node.children ?? [])
-                return children.isEmpty ? nil : FileNode(
-                    id: node.id,
-                    name: node.name,
-                    relativePath: node.relativePath,
-                    absolutePath: node.absolutePath,
-                    isDirectory: true,
-                    children: children
-                )
+    private var commitTitle: String {
+        commitMessage
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .first
+            .map(String.init)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private var commitBody: String {
+        let lines = commitMessage.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard lines.count > 1 else { return "" }
+        return lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canCommit: Bool {
+        !commitTitle.isEmpty && viewModel.stagedCount > 0
+    }
+
+    private func performCommit() {
+        guard canCommit else { return }
+        Task {
+            await viewModel.commit(title: commitTitle, body: commitBody)
+        }
+    }
+
+    @ViewBuilder
+    private func statusItemContextMenu(_ item: StatusItem) -> some View {
+        Button(item.isStaged ? "Unstage" : "Stage") {
+            Task { await viewModel.toggleStage(item: item) }
+        }
+        Button(item.isUntracked ? "Delete Untracked" : "Discard", role: .destructive) {
+            requestDiscard(item)
+        }
+        Divider()
+        Button("Copy Path") { copyPath(item.path) }
+        Button("Open in Finder") { openInFinder(relativePath: item.path) }
+    }
+
+    private func requestDiscard(_ item: StatusItem) {
+        pendingDiscardItem = item
+    }
+
+    private func copyPath(_ path: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(path, forType: .string)
+    }
+
+    private func openInFinder(relativePath: String) {
+        let url = URL(fileURLWithPath: viewModel.repoPath).appendingPathComponent(relativePath)
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard leftTab == .changes else { return event }
+            if let responder = NSApp.keyWindow?.firstResponder, responder is NSTextView || responder is NSTextField {
+                return event
             }
-            return statusByPath[node.relativePath] != nil ? node : nil
+            guard let chars = event.charactersIgnoringModifiers, chars.count == 1 else { return event }
+            if chars == String(UnicodeScalar(NSDownArrowFunctionKey)!) {
+                moveChangeSelection(step: 1)
+                return nil
+            }
+            if chars == String(UnicodeScalar(NSUpArrowFunctionKey)!) {
+                moveChangeSelection(step: -1)
+                return nil
+            }
+            return event
         }
     }
 
-    private func toggleProjectDirectory(id: String) {
-        if collapsedProjectDirectories.contains(id) {
-            collapsedProjectDirectories.remove(id)
-        } else {
-            collapsedProjectDirectories.insert(id)
+    private func removeKeyMonitor() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
         }
     }
 
-    private var changedStatusItems: [StatusItem] {
-        scopedStatusItems.filter { $0.status != "??" }
+    private func moveChangeSelection(step: Int) {
+        let items = filteredStatusItems
+        guard !items.isEmpty else { return }
+        let currentIndex = items.firstIndex { $0.path == viewModel.selectedPath } ?? 0
+        let nextIndex = max(0, min(items.count - 1, currentIndex + step))
+        let next = items[nextIndex]
+        viewModel.leftMode = .changes
+        viewModel.selectedPath = next.path
+        viewModel.activateTab(next.path)
+        Task { await viewModel.loadDiffForSelection() }
     }
+}
 
-    private var untrackedStatusItems: [StatusItem] {
-        scopedStatusItems.filter { $0.status == "??" }
-    }
+private struct MVPLeftTabs: View {
+    @Binding var selection: LeftPanelMode
 
-    private var scopedStatusItems: [StatusItem] {
-        switch commitScope {
-        case .all:
-            return viewModel.sortedStatusItems
-        case .staged:
-            return viewModel.sortedStatusItems.filter { isStaged($0.status) }
-        case .unstaged:
-            return viewModel.sortedStatusItems.filter { isUnstaged($0.status) }
+    var body: some View {
+        HStack(spacing: 0) {
+            tab("Changes", mode: .changes)
+            tab("Files", mode: .files)
         }
+        .background(AppTheme.chromeDarkElevated)
+        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
     }
 
-    private func isStaged(_ status: String) -> Bool {
-        guard status.count >= 1 else { return false }
-        let chars = Array(status)
-        let x = chars[0]
-        return x != " " && x != "?"
-    }
-
-    private func isUnstaged(_ status: String) -> Bool {
-        guard status.count >= 2 else { return false }
-        if status == "??" { return true }
-        let chars = Array(status)
-        let y = chars[1]
-        return y != " "
-    }
-
-    private var changedCommitTreeRows: [CommitTreeEntry] {
-        flattenCommitItems(changedStatusItems, sectionID: "changed")
-    }
-
-    private var untrackedCommitTreeRows: [CommitTreeEntry] {
-        let base = flattenCommitItems(untrackedStatusItems, sectionID: "untracked")
-        let rootID = "dir:untracked:__repo_root__"
-        let root = CommitTreeEntry(
-            id: rootID,
-            name: "grit",
-            fullPath: "__repo_root__",
-            depth: 1,
-            isDirectory: true,
-            fileCount: untrackedStatusItems.count,
-            statusItem: nil
-        )
-        if collapsedCommitDirectories.contains(rootID) {
-            return [root]
+    private func tab(_ title: String, mode: LeftPanelMode) -> some View {
+        Button {
+            selection = mode
+        } label: {
+            Text(title)
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(selection == mode ? AppTheme.chromeText : AppTheme.chromeMuted)
+                .frame(width: 74, height: 22)
+                .background(selection == mode ? Color.white.opacity(0.08) : Color.clear)
         }
-        let shifted = base.map { entry in
-            CommitTreeEntry(
-                id: entry.id,
-                name: entry.name,
-                fullPath: entry.fullPath,
-                depth: entry.depth + 1,
-                isDirectory: entry.isDirectory,
-                fileCount: entry.fileCount,
-                statusItem: entry.statusItem
-            )
-        }
-        return [root] + shifted
+        .buttonStyle(.plain)
     }
+}
 
-    private func flattenCommitItems(_ items: [StatusItem], sectionID: String) -> [CommitTreeEntry] {
-        var rows: [CommitTreeEntry] = []
-        var seenDirectories: Set<String> = []
-        var dirCount: [String: Int] = [:]
+private struct EmptyLeftState: View {
+    let title: String
+    let subtitle: String?
 
-        for item in items {
-            let parts = item.path.split(separator: "/").map(String.init)
-            if parts.count > 1 {
-                for idx in 0..<(parts.count - 1) {
-                    let dirPath = parts[0...idx].joined(separator: "/")
-                    dirCount[dirPath, default: 0] += 1
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeText.opacity(0.9))
+            if let subtitle {
+                Text(subtitle)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 12)
+    }
+}
+
+private struct MVPChangeRow: View {
+    let item: StatusItem
+    let selected: Bool
+    let onToggleStage: () -> Void
+    let onSelect: () -> Void
+    let onDiscard: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button(action: onToggleStage) {
+                Image(systemName: item.isStaged ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(item.isStaged ? AppTheme.accent : AppTheme.chromeMuted)
+            }
+            .buttonStyle(.plain)
+
+            Text(statusLetter)
+                .font(.system(size: 10.5, weight: .bold))
+                .foregroundStyle(statusColor)
+                .frame(width: 12, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(fileName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                    .lineLimit(1)
+                if !dirPath.isEmpty {
+                    Text(dirPath)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.75))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
-        }
 
-        for item in items.sorted(by: { $0.path.lowercased() < $1.path.lowercased() }) {
-            let parts = item.path.split(separator: "/").map(String.init)
-            if parts.count > 1 {
-                for idx in 0..<(parts.count - 1) {
-                    let dirPath = parts[0...idx].joined(separator: "/")
-                    let dirID = "dir:\(sectionID):\(dirPath)"
-                    if !seenDirectories.contains(dirID) {
-                        rows.append(
-                            CommitTreeEntry(
-                                id: dirID,
-                                name: parts[idx],
-                                fullPath: dirPath,
-                                depth: idx + 1,
-                                isDirectory: true,
-                                fileCount: dirCount[dirPath, default: 0],
-                                statusItem: nil
-                            )
-                        )
-                        seenDirectories.insert(dirID)
-                    }
-                }
+            Spacer(minLength: 0)
+
+            if item.additions > 0 || item.deletions > 0 {
+                Text("+\(item.additions)")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(Color.green.opacity(0.85))
+                Text("-\(item.deletions)")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(Color.red.opacity(0.85))
             }
-
-            let fileName = parts.last ?? item.path
-            rows.append(
-                CommitTreeEntry(
-                    id: "file:\(sectionID):\(item.path)",
-                    name: fileName,
-                    fullPath: item.path,
-                    depth: max(parts.count, 1),
-                    isDirectory: false,
-                    fileCount: 0,
-                    statusItem: item
-                )
-            )
         }
-
-        return rows.filter { row in
-            isCommitRowVisible(row, sectionID: sectionID)
+        .padding(.horizontal, 8)
+        .frame(height: 21)
+        .contentShape(Rectangle())
+        .background(selected ? Color.white.opacity(0.07) : .clear)
+        .onTapGesture(perform: onSelect)
+        .contextMenu {
+            Button(item.isUntracked ? "Delete Untracked" : "Discard", role: .destructive) {
+                onDiscard()
+            }
         }
     }
 
-    private func isCommitRowVisible(_ row: CommitTreeEntry, sectionID: String) -> Bool {
-        if sectionID == "untracked" && collapsedCommitDirectories.contains("dir:untracked:__repo_root__") {
-            return row.id == "dir:untracked:__repo_root__"
-        }
-        let parts = row.fullPath.split(separator: "/").map(String.init)
-        guard parts.count > 1 else { return true }
-        var path = ""
-        let upto = row.isDirectory ? parts.count - 1 : parts.count - 2
-        if upto < 0 { return true }
-        for idx in 0...upto {
-            path = path.isEmpty ? parts[idx] : "\(path)/\(parts[idx])"
-            let id = "dir:\(sectionID):\(path)"
-            if id != row.id && collapsedCommitDirectories.contains(id) {
-                return false
-            }
-        }
-        return true
+    private var statusLetter: String {
+        if item.isUntracked { return "U" }
+        if item.status.contains("A") { return "A" }
+        if item.status.contains("D") { return "D" }
+        return "M"
     }
 
-    private func toggleCommitDirectory(id: String) {
-        if collapsedCommitDirectories.contains(id) {
-            collapsedCommitDirectories.remove(id)
-        } else {
-            collapsedCommitDirectories.insert(id)
+    private var statusColor: Color {
+        switch statusLetter {
+        case "A": return Color.green.opacity(0.9)
+        case "D": return Color.red.opacity(0.9)
+        case "U": return Color.orange.opacity(0.9)
+        default: return AppTheme.accent.opacity(0.9)
         }
+    }
+
+    private var fileName: String {
+        URL(fileURLWithPath: item.path).lastPathComponent
+    }
+
+    private var dirPath: String {
+        let dir = URL(fileURLWithPath: item.path).deletingLastPathComponent().path
+        return dir == "/" ? "" : dir
     }
 }
 
@@ -864,10 +721,10 @@ private struct ProjectTreeRow: View {
         .padding(.horizontal, 8)
         .frame(height: 21)
         .contentShape(Rectangle())
-        .background(isSelected ? Color.white.opacity(0.10) : .clear)
+        .background(isSelected ? Color.white.opacity(0.07) : .clear)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(isSelected ? AppTheme.accent : .clear)
+                .fill(isSelected ? AppTheme.accent.opacity(0.8) : .clear)
                 .frame(width: 2)
         }
         .onTapGesture(perform: onTap)
@@ -943,6 +800,7 @@ private struct CommitTreeRow: View {
     let entry: CommitTreeEntry
     let isCollapsed: Bool
     let isSelected: Bool
+    let onToggleStage: () -> Void
     let onTap: () -> Void
 
     var body: some View {
@@ -950,9 +808,9 @@ private struct CommitTreeRow: View {
             Color.clear.frame(width: CGFloat(entry.depth - 1) * 9, height: 1)
 
             if entry.isDirectory {
-                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                Image(systemName: "square")
                     .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(isSelected ? AppTheme.accent : AppTheme.chromeMuted)
+                    .foregroundStyle(AppTheme.chromeMuted)
                 Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(AppTheme.chromeMuted)
@@ -967,9 +825,14 @@ private struct CommitTreeRow: View {
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
             } else {
-                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(isSelected ? AppTheme.accent : AppTheme.chromeMuted)
+                Button {
+                    onToggleStage()
+                } label: {
+                    Image(systemName: (entry.statusItem?.isStaged ?? false) ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundStyle((entry.statusItem?.isStaged ?? false) ? AppTheme.accent : AppTheme.chromeMuted)
+                }
+                .buttonStyle(.plain)
                 Image(systemName: statusIcon(entry.statusItem?.status ?? ""))
                     .font(.system(size: 11.5, weight: .regular))
                     .foregroundStyle(statusColor(entry.statusItem?.status ?? ""))
@@ -977,6 +840,14 @@ private struct CommitTreeRow: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(isSelected ? AppTheme.chromeText : statusTextColor(entry.statusItem?.status ?? ""))
                     .lineLimit(1)
+                if let item = entry.statusItem {
+                    Text("+\(item.additions)")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(Color.green.opacity(0.9))
+                    Text("-\(item.deletions)")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(Color.red.opacity(0.9))
+                }
             }
 
             Spacer(minLength: 0)
@@ -1015,31 +886,20 @@ private struct CommitTreeRow: View {
     }
 }
 
-struct MainPanel: View {
+struct DiffPanel: View {
     @ObservedObject var viewModel: RepoViewModel
     private let diffFontPreset: DiffFontPreset = .large
     @State private var selectedHunkIndex: Int = 0
     @State private var focusSelectedHunk: Bool = false
-    @State private var keyMonitor: Any?
 
     var body: some View {
         VStack(spacing: 0) {
-            EditorTabs(viewModel: viewModel)
-
-            if viewModel.leftMode == .changes {
-                IDEUnifiedDiff(
-                    lines: mapLines(viewModel.diffLines),
-                    split: viewModel.diffMode == .sideBySide,
-                    fontPreset: diffFontPreset,
-                    selectedHunkIndex: selectedHunkIndex,
-                    focusSelectedHunk: focusSelectedHunk
-                )
+            header
+            Divider().overlay(AppTheme.chromeDivider)
+            if viewModel.leftMode == .files {
+                filesBody
             } else {
-                FileDetailView(
-                    text: $viewModel.fileContent,
-                    path: viewModel.selectedPath,
-                    isEditable: viewModel.isDetailEditable
-                )
+                changesBody
             }
         }
         .background(AppTheme.editorBackground)
@@ -1049,11 +909,72 @@ struct MainPanel: View {
         .onChange(of: viewModel.diffLines) { _ in
             selectedHunkIndex = 0
         }
-        .onAppear {
-            installKeyMonitor()
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            Text(headerTitle)
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+            if viewModel.isRepoOpen, let selected = viewModel.selectedPath {
+                Text(viewModel.selectedDiffScope == .staged ? "staged" : "unstaged")
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(AppTheme.chromeDarkElevated)
+                    .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+                    .help(selected)
+            }
         }
-        .onDisappear {
-            removeKeyMonitor()
+        .padding(.horizontal, 10)
+        .frame(height: 24)
+        .background(AppTheme.chromeDark)
+    }
+
+    private var headerTitle: String {
+        if !viewModel.isRepoOpen { return "Diff" }
+        if viewModel.statusItems.isEmpty { return "Diff" }
+        return viewModel.selectedPath ?? "Diff"
+    }
+
+    @ViewBuilder
+    private var changesBody: some View {
+        if !viewModel.isRepoOpen {
+            EmptyMainState(title: "Open a repository", subtitle: "Use Open in the top bar")
+        } else if viewModel.statusItems.isEmpty {
+            EmptyMainState(title: "No changes to show", subtitle: nil)
+        } else if viewModel.selectedPath == nil {
+            EmptyMainState(title: "Select a file to view changes", subtitle: nil)
+        } else if viewModel.diffLines.isEmpty {
+            EmptyMainState(title: "No diff available", subtitle: nil)
+        } else {
+            IDEUnifiedDiff(
+                lines: mapLines(viewModel.diffLines),
+                split: false,
+                fontPreset: diffFontPreset,
+                selectedHunkIndex: selectedHunkIndex,
+                focusSelectedHunk: focusSelectedHunk
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var filesBody: some View {
+        if !viewModel.isRepoOpen {
+            EmptyMainState(title: "Open a repository", subtitle: "Use Open in the top bar")
+        } else if viewModel.selectedPath == nil {
+            EmptyMainState(title: "Select a file to view file", subtitle: nil)
+        } else {
+            FileDetailView(
+                text: $viewModel.fileContent,
+                path: viewModel.selectedPath,
+                isEditable: false,
+                emptyText: "Select a file to view file"
+            )
         }
     }
 
@@ -1071,41 +992,8 @@ struct MainPanel: View {
         selectedHunkIndex = (selectedHunkIndex + 1) % hunkCount
     }
 
-    private func installKeyMonitor() {
-        guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard viewModel.leftMode == .changes else { return event }
-            guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
-            if let responder = NSApp.keyWindow?.firstResponder, responder is NSTextView || responder is NSTextField {
-                return event
-            }
-            guard let chars = event.charactersIgnoringModifiers, chars.count == 1 else { return event }
-            switch chars {
-            case "]", "j":
-                jumpToNextHunk()
-                return nil
-            case "[", "k":
-                jumpToPrevHunk()
-                return nil
-            default:
-                return event
-            }
-        }
-    }
-
-    private func removeKeyMonitor() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
-    }
-
     private func mapLines(_ lines: [DiffLine]) -> [IDEDiffRow] {
-        if lines.isEmpty {
-            return demoRows
-        }
-
-        let mapped = lines.map { line in
+        lines.map { line in
             switch line.kind {
             case .added:
                 return IDEDiffRow(
@@ -1142,24 +1030,6 @@ struct MainPanel: View {
                 )
             }
         }
-
-        let visibleCount = mapped.filter {
-            !($0.oldText.trimmingCharacters(in: .whitespaces).isEmpty &&
-              $0.newText.trimmingCharacters(in: .whitespaces).isEmpty)
-        }.count
-        return visibleCount < 4 ? demoRows : mapped
-    }
-
-    private var demoRows: [IDEDiffRow] {
-        [
-                IDEDiffRow(oldNum: 1, oldText: "package com.example.app", newNum: 1, newText: "package com.example.app", kind: .normal),
-                IDEDiffRow(oldNum: 2, oldText: "", newNum: 2, newText: "", kind: .normal),
-                IDEDiffRow(oldNum: 3, oldText: "import java.util.Scanner", newNum: 3, newText: "import java.util.Scanner", kind: .normal),
-                IDEDiffRow(oldNum: nil, oldText: "", newNum: 4, newText: "val greeting = \"Welcome back\"", kind: .added),
-                IDEDiffRow(oldNum: 4, oldText: "val greeting = \"Hello, User\"", newNum: nil, newText: "", kind: .removed),
-                IDEDiffRow(oldNum: 5, oldText: "", newNum: 5, newText: "fun main() {", kind: .normal),
-                IDEDiffRow(oldNum: 6, oldText: "println(greeting)", newNum: 6, newText: "println(greeting)", kind: .normal)
-        ]
     }
 }
 
@@ -1167,6 +1037,7 @@ private struct FileDetailView: View {
     @Binding var text: String
     let path: String?
     let isEditable: Bool
+    let emptyText: String
 
     var body: some View {
         if isEditable {
@@ -1191,10 +1062,30 @@ private struct FileDetailView: View {
     }
 
     private var displayText: String {
-        if text.isEmpty {
-            return "No file content loaded.\n\nPath: \(path ?? "(none)")"
+        if path == nil {
+            return emptyText
         }
-        return text
+        return text.isEmpty ? emptyText : text
+    }
+}
+
+private struct EmptyMainState: View {
+    let title: String
+    let subtitle: String?
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeText.opacity(0.9))
+            if let subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppTheme.editorBackground)
     }
 }
 
