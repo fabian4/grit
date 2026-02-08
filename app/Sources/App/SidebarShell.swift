@@ -12,12 +12,14 @@ struct SidebarShell: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider().overlay(AppTheme.chromeDivider)
+            chrome
             if leftTab == .changes {
                 ChangesPanel(viewModel: viewModel)
-            } else {
+            } else if leftTab == .files {
                 FilesPanel(viewModel: viewModel)
+            } else {
+                HistorySidebarPanel(viewModel: viewModel)
+                    .background(AppTheme.sidebarDark)
             }
         }
         .onAppear {
@@ -35,13 +37,23 @@ struct SidebarShell: View {
     }
 
     private var header: some View {
-        HStack(spacing: 0) {
-            tab("Changes", mode: .changes)
-            tab("Files", mode: .files)
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: leftTab == .history ? 8 : 0) {
+            if leftTab == .history {
+                Text("GRIT")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                    .padding(.leading, 2)
+            }
+            HStack(spacing: 0) {
+                tab("Changes", mode: .changes)
+                tab("Files", mode: .files)
+                tab("History", mode: .history)
+                Spacer(minLength: 0)
+            }
+            .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
         }
-        .padding(.horizontal, 8)
-        .frame(height: 28)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
         .background(AppTheme.sidebarDark)
     }
 
@@ -57,7 +69,13 @@ struct SidebarShell: View {
                 .background(leftTab == mode ? AppTheme.chromeDarkElevated : AppTheme.sidebarDark)
         }
         .buttonStyle(.plain)
-        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+    }
+
+    private var chrome: some View {
+        VStack(spacing: 0) {
+            header
+            Divider().overlay(AppTheme.chromeDivider)
+        }
     }
 
     private func applyTab() {
@@ -66,9 +84,8 @@ struct SidebarShell: View {
             if viewModel.selectedPath != nil {
                 Task { await viewModel.loadDiffForSelection() }
             }
-        } else {
+        } else if leftTab == .files {
             Task { await viewModel.loadFileForSelection() }
         }
     }
 }
-

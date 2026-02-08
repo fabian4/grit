@@ -15,8 +15,10 @@ struct WorkspaceShell: View {
             } right: {
                 DiffPanel(viewModel: viewModel)
             }
-            Divider().overlay(AppTheme.chromeDivider)
-            CommitPanel(viewModel: viewModel)
+            if leftTab == .changes {
+                Divider().overlay(AppTheme.chromeDivider)
+                CommitPanel(viewModel: viewModel)
+            }
         }
         .onChange(of: viewModel.lastErrorMessage) { _ in
             showGitError = viewModel.lastErrorMessage != nil

@@ -72,6 +72,7 @@ struct DiffHunk: Identifiable, Hashable {
 enum LeftPanelMode: String, Hashable, CaseIterable, Identifiable {
     case changes
     case files
+    case history
 
     var id: String { rawValue }
 
@@ -79,6 +80,7 @@ enum LeftPanelMode: String, Hashable, CaseIterable, Identifiable {
         switch self {
         case .changes: return "Changes"
         case .files: return "Files"
+        case .history: return "History"
         }
     }
 }
@@ -125,6 +127,7 @@ final class RepoViewModel: ObservableObject {
     @Published var isTerminalRunning: Bool = false
     @Published var currentBranch: String = "-"
     @Published var commitMessage: String = ""
+    @Published var filterQuery: String = ""
 
     private let client = WorkspaceClient.shared
     private var fileIndex: [String: FileNode] = [:]
@@ -729,6 +732,12 @@ final class RepoViewModel: ObservableObject {
 
     var unstagedItems: [StatusItem] {
         statusItems.filter(\.isUnstaged)
+    }
+
+    var filteredStatusItems: [StatusItem] {
+        let q = filterQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q.isEmpty { return sortedStatusItems }
+        return sortedStatusItems.filter { $0.path.lowercased().contains(q) }
     }
 
     var unstagedCount: Int {

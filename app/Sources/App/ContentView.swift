@@ -7,19 +7,13 @@ struct ContentView: View {
     @State private var splitRatio: CGFloat = CGFloat(AppConfig.shared.splitRatio)
 
     var body: some View {
-        ZStack {
-            AppTheme.backgroundGradient
-                .ignoresSafeArea()
-            AppTheme.jetbrainsGlow
-                .ignoresSafeArea()
-            WorkspaceShell(viewModel: viewModel, splitRatio: $splitRatio)
-                .padding(0)
-        }
-        .frame(minWidth: 900, minHeight: 600)
-        .environment(\.colorScheme, .dark)
-        .onAppear {
-            NSApp.activate(ignoringOtherApps: true)
-            isPathFocused = true
-        }
+        WorkspaceShell(viewModel: viewModel, splitRatio: $splitRatio)
+            .padding(0)
+            .background(AppTheme.mainDark.ignoresSafeArea())
+            .frame(minWidth: 900, minHeight: 600)
+            .onAppear {
+                NSApp.activate(ignoringOtherApps: true)
+                isPathFocused = true
+            }
     }
 }

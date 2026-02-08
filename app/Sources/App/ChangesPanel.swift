@@ -3,21 +3,12 @@ import AppKit
 
 struct ChangesPanel: View {
     @ObservedObject var viewModel: RepoViewModel
-    @State private var query: String = ""
-    @State private var scope: DiffScope = .unstaged
     @State private var pendingDiscardItem: StatusItem? = nil
     @State private var keyMonitor: Any? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider().overlay(AppTheme.chromeDivider)
-            searchRow
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8)
-            controlsRow
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
+            toolbar
             Divider().overlay(AppTheme.chromeDivider)
             listBody
         }
@@ -42,99 +33,60 @@ struct ChangesPanel: View {
         }
     }
 
-    private var header: some View {
+    private var toolbar: some View {
         HStack(spacing: 8) {
-            scopeTabs
-            Spacer(minLength: 0)
-            Text("Changes: \(viewModel.statusItems.count)")
-                .font(.system(size: 11, weight: .semibold))
+            Text("CHANGES")
+                .font(.system(size: 10.5, weight: .bold))
                 .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 28)
-    }
-
-    private var scopeTabs: some View {
-        HStack(spacing: 0) {
-            scopeTab(title: "Unstaged", count: viewModel.unstagedItems.count, value: .unstaged)
-            scopeTab(title: "Staged", count: viewModel.stagedItems.count, value: .staged)
-        }
-        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-    }
-
-    private func scopeTab(title: String, count: Int, value: DiffScope) -> some View {
-        Button {
-            scope = value
-            if viewModel.selectedPath != nil {
-                viewModel.selectedDiffScope = value
-                Task { await viewModel.loadDiffForSelection() }
+            Spacer(minLength: 0)
+            Button {
+                Task { await viewModel.stageAll() }
+            } label: {
+                Image(systemName: "checkmark.square")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                    .frame(width: 18, height: 18)
             }
-        } label: {
-            Text("\(title) \(count)")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(scope == value ? AppTheme.chromeText : AppTheme.chromeMuted)
-                .padding(.horizontal, 10)
-                .frame(height: 20)
-                .background(scope == value ? AppTheme.chromeDarkElevated : AppTheme.sidebarDark)
-        }
-        .buttonStyle(.plain)
-    }
+            .buttonStyle(.plain)
+            .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.35)
+            .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
-    private var searchRow: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted)
-            TextField("Filter files", text: $query)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AppTheme.chromeText)
+            Button {
+                Task { await viewModel.unstageAll() }
+            } label: {
+                Image(systemName: "square.slash")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                    .frame(width: 18, height: 18)
+            }
+            .buttonStyle(.plain)
+            .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.35)
+            .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 24)
-        .background(AppTheme.fieldFill)
-        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-    }
-
-    private var controlsRow: some View {
-        HStack(spacing: 8) {
-            Button("Stage All") { Task { await viewModel.stageAll() } }
-                .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
-                .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
-            Button("Unstage All") { Task { await viewModel.unstageAll() } }
-                .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
-                .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
-            Spacer(minLength: 0)
-            Text("Staged: \(viewModel.stagedCount)")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-        }
-        .buttonStyle(.plain)
-        .font(.system(size: 11, weight: .semibold))
-        .foregroundStyle(AppTheme.chromeText)
+        .padding(.horizontal, 10)
+        .frame(height: 28)
     }
 
     private var listBody: some View {
         ScrollView {
             if !viewModel.isRepoOpen {
-                EmptyLeftState(title: "No repo open", subtitle: "Use Open in the top bar")
-                    .padding(.top, 18)
+                EmptyLeftState(title: "No repo open", subtitle: "Use Open Repo")
+                    .padding(.top, 12)
             } else if viewModel.statusItems.isEmpty {
                 EmptyLeftState(title: "Working tree clean", subtitle: nil)
-                    .padding(.top, 18)
-            } else if filteredItems.isEmpty {
+                    .padding(.top, 12)
+            } else if viewModel.filteredStatusItems.isEmpty {
                 EmptyLeftState(
-                    title: scope == .staged ? "No staged changes" : "No unstaged changes",
-                    subtitle: query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "No matching files"
+                    title: "No matching files",
+                    subtitle: viewModel.filterQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "Clear search to show all changes"
                 )
-                .padding(.top, 18)
+                .padding(.top, 12)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(filteredItems) { item in
+                    ForEach(viewModel.filteredStatusItems) { item in
                         ChangeRow(
                             item: item,
-                            isSelected: item.path == viewModel.selectedPath && viewModel.selectedDiffScope == scope,
-                            scope: scope,
+                            isSelected: item.path == viewModel.selectedPath,
                             onSelect: { select(item) },
                             onToggleStage: { Task { await viewModel.toggleStage(item: item) } },
                             onDiscard: { pendingDiscardItem = item }
@@ -148,7 +100,7 @@ struct ChangesPanel: View {
     }
 
     private func select(_ item: StatusItem) {
-        viewModel.selectedDiffScope = scope
+        viewModel.selectedDiffScope = .unstaged
         viewModel.selectedPath = item.path
         viewModel.activateTab(item.path)
         Task { await viewModel.loadDiffForSelection() }
@@ -181,24 +133,11 @@ struct ChangesPanel: View {
     }
 
     private func moveSelection(step: Int) {
-        let items = filteredItems
+        let items = viewModel.filteredStatusItems
         guard !items.isEmpty else { return }
-        let isCurrentInScope = (viewModel.selectedDiffScope == scope)
-        let currentIndex: Int = {
-            guard isCurrentInScope, let sel = viewModel.selectedPath, let idx = items.firstIndex(where: { $0.path == sel }) else {
-                return 0
-            }
-            return idx
-        }()
+        let currentIndex = items.firstIndex { $0.path == viewModel.selectedPath } ?? 0
         let nextIndex = max(0, min(items.count - 1, currentIndex + step))
         select(items[nextIndex])
-    }
-
-    private var filteredItems: [StatusItem] {
-        let base: [StatusItem] = (scope == .staged) ? viewModel.stagedItems : viewModel.unstagedItems
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if q.isEmpty { return base.sorted { $0.path.lowercased() < $1.path.lowercased() } }
-        return base.filter { $0.path.lowercased().contains(q) }.sorted { $0.path.lowercased() < $1.path.lowercased() }
     }
 
     @ViewBuilder
@@ -229,7 +168,6 @@ struct ChangesPanel: View {
 private struct ChangeRow: View {
     let item: StatusItem
     let isSelected: Bool
-    let scope: DiffScope
     let onSelect: () -> Void
     let onToggleStage: () -> Void
     let onDiscard: () -> Void
@@ -244,41 +182,19 @@ private struct ChangeRow: View {
             }
             .buttonStyle(.plain)
 
-            Text(statusLetter)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(statusColor)
-                .frame(width: 12, alignment: .leading)
+            Image(systemName: fileSymbol)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(fileColor)
+                .frame(width: 16, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(fileName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeText)
-                    .lineLimit(1)
-                if !dirPath.isEmpty {
-                    Text(dirPath)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
+            Text(fileName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppTheme.chromeText)
+                .lineLimit(1)
 
             Spacer(minLength: 0)
 
-            if item.additions > 0 || item.deletions > 0 {
-                HStack(spacing: 6) {
-                    if item.additions > 0 {
-                        Text("+\(item.additions)")
-                            .font(.system(size: 10.5, weight: .semibold))
-                            .foregroundStyle(Color.green.opacity(0.9))
-                    }
-                    if item.deletions > 0 {
-                        Text("-\(item.deletions)")
-                            .font(.system(size: 10.5, weight: .semibold))
-                            .foregroundStyle(Color.red.opacity(0.9))
-                    }
-                }
-            }
+            ChangeStatsPill(additions: item.additions, deletions: item.deletions)
         }
         .padding(.horizontal, 8)
         .frame(height: 21)
@@ -296,34 +212,28 @@ private struct ChangeRow: View {
         }
     }
 
-    private var statusLetter: String {
-        if item.status == "??" { return "U" }
-        if scope == .staged {
-            let c = item.stagedCode
-            if c == " " { return "·" }
-            return String(c)
-        }
-        let c = item.unstagedCode
-        if c == " " { return "·" }
-        return String(c)
-    }
-
-    private var statusColor: Color {
-        switch statusLetter {
-        case "A": return Color.green.opacity(0.9)
-        case "D": return Color.red.opacity(0.9)
-        case "U", "?": return Color.orange.opacity(0.9)
-        default: return AppTheme.accent.opacity(0.9)
-        }
-    }
-
     private var fileName: String {
         URL(fileURLWithPath: item.path).lastPathComponent
     }
 
-    private var dirPath: String {
-        let dir = URL(fileURLWithPath: item.path).deletingLastPathComponent().path
-        return dir == "/" ? "" : dir
+    private var fileSymbol: String {
+        let lowered = fileName.lowercased()
+        if lowered.hasSuffix(".swift") { return "swift" }
+        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return "curlybraces" }
+        if lowered.hasSuffix(".md") { return "text.alignleft" }
+        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return "photo" }
+        if lowered == "makefile" { return "hammer" }
+        return "doc.text"
+    }
+
+    private var fileColor: Color {
+        let lowered = fileName.lowercased()
+        if lowered.hasSuffix(".swift") { return AppTheme.accent }
+        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return Color.purple.opacity(0.85) }
+        if lowered.hasSuffix(".md") { return Color.cyan.opacity(0.85) }
+        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return Color.orange.opacity(0.9) }
+        if lowered == "makefile" { return Color.yellow.opacity(0.9) }
+        return AppTheme.chromeMuted
     }
 }
 
@@ -344,5 +254,32 @@ private struct EmptyLeftState: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
+    }
+}
+
+private struct ChangeStatsPill: View {
+    let additions: Int
+    let deletions: Int
+
+    var body: some View {
+        let show = additions > 0 || deletions > 0
+        Group {
+            if show {
+                HStack(spacing: 8) {
+                    Text("+\(additions)")
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(.white)
+                    Text("-\(deletions)")
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 18)
+                .background(AppTheme.accent.opacity(0.9))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                EmptyView()
+            }
+        }
     }
 }

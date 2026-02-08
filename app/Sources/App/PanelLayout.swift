@@ -6,50 +6,74 @@ struct TopBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 6) {
-                Image(systemName: "folder")
-                    .font(.system(size: 12, weight: .semibold))
-                Text(repoName)
-                    .font(.system(size: 11.5, weight: .semibold))
+            HStack(spacing: 8) {
+                Button {
+                    openRepoPicker()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Open Repo")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                Text(viewModel.isRepoOpen ? viewModel.repoPath : "No repo open")
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .padding(.horizontal, 10)
+                    .frame(height: 22)
+                    .background(AppTheme.chromeDarkElevated)
+                    .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isBusy)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "shippingbox")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                    Text(repoName)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                    if viewModel.isRepoOpen {
+                        Text("—")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AppTheme.chromeMuted.opacity(0.55))
+                        Text(shortPath)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                    }
+                }
+                .frame(width: 260, alignment: .leading)
             }
-            .frame(width: 560, alignment: .leading)
             .padding(.leading, 72)
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 5) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.branch")
-                    Text(viewModel.currentBranch)
+            searchField
+                .frame(width: 280)
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 8) {
+                branchButton
+                iconButton(symbol: "arrow.clockwise") {
+                    Task { await viewModel.refresh() }
                 }
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.86))
+                .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
+                .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
-                Button("Refresh") { Task { await viewModel.refresh() } }
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(AppTheme.chromeText)
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(AppTheme.chromeDarkElevated)
-                    .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
-                    .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
-
-                Button("Open") { openRepoPicker() }
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white)
+                Button("Fetch") {
+                    viewModel.lastErrorMessage = "Fetch is not implemented in MVP."
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeText.opacity(0.95))
                 .buttonStyle(.plain)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 2)
-                .background(AppTheme.accent)
-                .opacity(viewModel.isBusy ? 0.6 : 1.0)
-                .disabled(viewModel.isBusy)
+                .padding(.horizontal, 10)
+                .frame(height: 22)
+                .background(AppTheme.chromeDarkElevated)
+                .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+                .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
+                .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
                 if viewModel.isBusy {
                     ProgressView()
@@ -59,9 +83,9 @@ struct TopBar: View {
                         .tint(AppTheme.chromeMuted.opacity(0.8))
                 }
             }
-            .padding(.trailing, 6)
+            .padding(.trailing, 10)
         }
-        .frame(height: 26)
+        .frame(height: 32)
         .background(AppTheme.chromeDark.allowsHitTesting(false))
         .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
     }
@@ -69,6 +93,67 @@ struct TopBar: View {
     private var repoName: String {
         guard viewModel.isRepoOpen else { return "Grit" }
         return URL(fileURLWithPath: viewModel.repoPath).lastPathComponent
+    }
+
+    private var shortPath: String {
+        let path = viewModel.repoPath
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        if path.hasPrefix(home + "/") {
+            return "~/" + path.dropFirst(home.count + 1)
+        }
+        return path
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
+            TextField("Search", text: $viewModel.filterQuery)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppTheme.chromeText)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 22)
+        .background(AppTheme.chromeDarkElevated)
+        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+    }
+
+    private var branchButton: some View {
+        Button {
+            // MVP: read-only
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.triangle.branch")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(viewModel.currentBranch)
+                    .font(.system(size: 11, weight: .semibold))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
+            }
+            .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+            .padding(.horizontal, 10)
+            .frame(height: 22)
+            .background(AppTheme.chromeDarkElevated)
+            .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .opacity(viewModel.isRepoOpen ? 1.0 : 0.45)
+        .disabled(!viewModel.isRepoOpen)
+    }
+
+    private func iconButton(symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                .frame(width: 28, height: 22)
+                .background(AppTheme.chromeDarkElevated)
+                .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     private func openRepoPicker() {
@@ -898,6 +983,8 @@ struct DiffPanel: View {
             Divider().overlay(AppTheme.chromeDivider)
             if viewModel.leftMode == .files {
                 filesBody
+            } else if viewModel.leftMode == .history {
+                HistoryMainPanel(viewModel: viewModel)
             } else {
                 changesBody
             }
@@ -913,32 +1000,31 @@ struct DiffPanel: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text(headerTitle)
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+            Text(breadcrumb)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
-            if viewModel.isRepoOpen, let selected = viewModel.selectedPath {
-                Text(viewModel.selectedDiffScope == .staged ? "staged" : "unstaged")
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(AppTheme.chromeDarkElevated)
-                    .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-                    .help(selected)
-            }
+            Text("Binary: No")
+                .font(.system(size: 10.5, weight: .bold))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.75))
+                .padding(.horizontal, 8)
+                .frame(height: 18)
+                .background(AppTheme.chromeDarkElevated)
+                .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
         }
-        .padding(.horizontal, 10)
-        .frame(height: 24)
-        .background(AppTheme.chromeDark)
+        .padding(.horizontal, 12)
+        .frame(height: 28)
+        .background(AppTheme.panelDark)
     }
 
-    private var headerTitle: String {
-        if !viewModel.isRepoOpen { return "Diff" }
-        if viewModel.statusItems.isEmpty { return "Diff" }
-        return viewModel.selectedPath ?? "Diff"
+    private var breadcrumb: String {
+        guard viewModel.isRepoOpen else { return "Diff" }
+        guard let path = viewModel.selectedPath, !path.isEmpty else { return "Diff" }
+        let parts = path.split(separator: "/").map(String.init)
+        if parts.count <= 1 { return path }
+        return parts.joined(separator: "  >  ")
     }
 
     @ViewBuilder
@@ -1114,7 +1200,7 @@ private enum DiffFontPreset: String, CaseIterable {
         switch self {
         case .small: return 20
         case .medium: return 21
-        case .large: return 23
+        case .large: return 22
         }
     }
 }
@@ -1492,9 +1578,9 @@ private struct IDEUnifiedDiff: View {
             case .normal:
                 return Color.clear
             case .added:
-                return (side == .new || side == .merged) ? Color.green.opacity(0.15) : Color.clear
+                return (side == .new || side == .merged) ? AppTheme.diffAddedFill : Color.clear
             case .removed:
-                return (side == .old || side == .merged) ? Color.red.opacity(0.15) : Color.clear
+                return (side == .old || side == .merged) ? AppTheme.diffRemovedFill : Color.clear
             case .hunk:
                 return Color.clear
             }
@@ -1503,9 +1589,9 @@ private struct IDEUnifiedDiff: View {
         private func stripeColor(for row: IDEDiffRow, side: Side) -> Color {
             switch row.kind {
             case .added:
-                return (side == .new || side == .merged) ? Color.green.opacity(0.85) : .clear
+                return (side == .new || side == .merged) ? AppTheme.diffAddedStripe : .clear
             case .removed:
-                return (side == .old || side == .merged) ? Color.red.opacity(0.85) : .clear
+                return (side == .old || side == .merged) ? AppTheme.diffRemovedStripe : .clear
             default:
                 return .clear
             }

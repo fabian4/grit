@@ -2,14 +2,10 @@ import SwiftUI
 
 struct FilesPanel: View {
     @ObservedObject var viewModel: RepoViewModel
-    @State private var query: String = ""
+    @State private var collapsed: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
-            searchRow
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8)
-            Divider().overlay(AppTheme.chromeDivider)
             listBody
         }
         .background(AppTheme.sidebarDark)
@@ -21,29 +17,16 @@ struct FilesPanel: View {
         }
     }
 
-    private var searchRow: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted)
-            TextField("Filter files", text: $query)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AppTheme.chromeText)
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 24)
-        .background(AppTheme.fieldFill)
-        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-    }
-
     private var listBody: some View {
         ScrollView {
             if !viewModel.isRepoOpen {
                 FilesEmptyState(title: "No repo open", subtitle: "Use Open in the top bar")
                     .padding(.top, 18)
             } else if filteredRows.isEmpty {
-                FilesEmptyState(title: "No files", subtitle: query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "No matching files")
+                FilesEmptyState(
+                    title: "No files",
+                    subtitle: viewModel.filterQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "No matching files"
+                )
                     .padding(.top, 18)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -52,8 +35,11 @@ struct FilesPanel: View {
                             entry: entry,
                             isSelected: entry.node.id == viewModel.selectedFileID
                         ) {
-                            guard !entry.node.isDirectory else { return }
-                            Task { await viewModel.selectAndLoadFile(path: entry.node.relativePath, id: entry.node.id) }
+                            if entry.node.isDirectory {
+                                toggleCollapse(entry.node.id)
+                            } else {
+                                Task { await viewModel.selectAndLoadFile(path: entry.node.relativePath, id: entry.node.id) }
+                            }
                         }
                     }
                 }
@@ -63,17 +49,17 @@ struct FilesPanel: View {
     }
 
     private var filteredRows: [FileRowEntry] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let q = viewModel.filterQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let nodes = q.isEmpty ? viewModel.fileTree : filteredProjectNodes(viewModel.fileTree, query: q)
-        return flattenProjectNodes(nodes, depth: 0)
+        return flattenProjectNodes(nodes, depth: 0, collapsed: collapsed)
     }
 
-    private func flattenProjectNodes(_ nodes: [FileNode], depth: Int) -> [FileRowEntry] {
+    private func flattenProjectNodes(_ nodes: [FileNode], depth: Int, collapsed: Set<String>) -> [FileRowEntry] {
         var out: [FileRowEntry] = []
         for node in nodes {
-            out.append(FileRowEntry(node: node, depth: depth))
-            if node.isDirectory, let children = node.children {
-                out.append(contentsOf: flattenProjectNodes(children, depth: depth + 1))
+            out.append(FileRowEntry(node: node, depth: depth, isCollapsed: collapsed.contains(node.id)))
+            if node.isDirectory, let children = node.children, !collapsed.contains(node.id) {
+                out.append(contentsOf: flattenProjectNodes(children, depth: depth + 1, collapsed: collapsed))
             }
         }
         return out
@@ -100,11 +86,20 @@ struct FilesPanel: View {
             return (nameMatches || pathMatches) ? node : nil
         }
     }
+
+    private func toggleCollapse(_ id: String) {
+        if collapsed.contains(id) {
+            collapsed.remove(id)
+        } else {
+            collapsed.insert(id)
+        }
+    }
 }
 
 private struct FileRowEntry: Hashable {
     let node: FileNode
     let depth: Int
+    let isCollapsed: Bool
 }
 
 private struct FileTreeRow: View {
@@ -117,9 +112,12 @@ private struct FileTreeRow: View {
             Color.clear.frame(width: CGFloat(entry.depth) * 8, height: 1)
 
             if entry.node.isDirectory {
+                Image(systemName: entry.isCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
                 Image(systemName: "folder")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.chromeMuted)
+                    .foregroundStyle(AppTheme.accentSecondary.opacity(0.95))
             } else {
                 Image(systemName: fileSymbol(entry.node.name))
                     .font(.system(size: 13, weight: .regular))
