@@ -1,12 +1,10 @@
 gen:
-	scripts/gen-bindings.sh
+	@echo "No-op: project is pure Swift."
 
 build-core:
-	cargo build --manifest-path crates/core/Cargo.toml
+	@echo "No-op: project is pure Swift."
 
 build:
-	$(MAKE) gen
-	$(MAKE) build-core
 	swift build --package-path app
 
 run:

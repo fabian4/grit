@@ -36,7 +36,7 @@ private extension ContentView {
                 MainPanel(viewModel: viewModel)
             }
             BottomPanel(viewModel: viewModel)
-                .frame(height: 116)
+                .frame(height: 96)
         }
     }
 }

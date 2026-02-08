@@ -6,37 +6,37 @@ struct TopBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 7) {
+            HStack(spacing: 5) {
                 Image(systemName: "line.3.horizontal")
                 Image(systemName: "folder")
                 Text("untitled-project")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
 
                 HeaderIcon(symbol: "tray.and.arrow.up")
                 HeaderIcon(symbol: "arrow.triangle.branch")
             }
-            .foregroundStyle(AppTheme.chromeText)
-            .frame(width: 292, alignment: .leading)
-            .padding(.leading, 8)
+            .foregroundStyle(AppTheme.chromeMuted.opacity(0.92))
+            .frame(width: 248, alignment: .leading)
+            .padding(.leading, 72)
 
             Rectangle()
                 .fill(AppTheme.chromeDivider)
-                .frame(width: 1, height: 18)
-                .padding(.horizontal, 7)
+                .frame(width: 1, height: 14)
+                .padding(.horizontal, 5)
 
-            HStack(spacing: 7) {
+            HStack(spacing: 5) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(AppTheme.chromeMuted)
                 Text("Search everywhere")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeMuted)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
                 Spacer(minLength: 0)
                 Text("Double Shift")
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(AppTheme.chromeMuted)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.82))
             }
-            .padding(.horizontal, 10)
-            .frame(width: 356, height: 22)
+            .padding(.horizontal, 8)
+            .frame(width: 330, height: 20)
             .background(AppTheme.fieldFill)
             .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
 
@@ -45,15 +45,15 @@ struct TopBar: View {
             Rectangle()
                 .fill(AppTheme.chromeDivider)
                 .frame(width: 1, height: 18)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 6)
 
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.branch")
                     Text("master")
                 }
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.86))
 
                 HeaderIcon(symbol: "play.fill", tint: AppTheme.accent)
                 HeaderIcon(symbol: "ladybug.fill")
@@ -62,31 +62,31 @@ struct TopBar: View {
                 Button("Open") {
                     Task { await viewModel.openRepo() }
                 }
-                .font(.system(size: 10.5, weight: .bold))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.white)
                 .buttonStyle(.plain)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
                 .background(AppTheme.accent)
             }
-            .padding(.trailing, 8)
+            .padding(.trailing, 6)
         }
-        .frame(height: 30)
-        .background(AppTheme.chromeDark)
+        .frame(height: 26)
+        .background(AppTheme.chromeDark.allowsHitTesting(false))
         .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
     }
 }
 
 private struct HeaderIcon: View {
     let symbol: String
-    var tint: Color = AppTheme.chromeText
+    var tint: Color = AppTheme.chromeMuted
 
     var body: some View {
         Button {} label: {
             Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 14, height: 14)
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(tint.opacity(0.9))
+                .frame(width: 12, height: 12)
         }
         .buttonStyle(.plain)
     }
@@ -123,7 +123,7 @@ struct ToolWindowRail: View {
     let onSelect: (SidebarMode) -> Void
 
     var body: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 6) {
             RailModeIcon(
                 symbol: "folder",
                 active: selected == .project
@@ -134,9 +134,9 @@ struct ToolWindowRail: View {
             ) { onSelect(.commit) }
             Spacer(minLength: 0)
         }
-        .padding(.top, 8)
-        .frame(width: 36)
-        .background(AppTheme.chromeDark)
+        .padding(.top, 6)
+        .frame(width: 32)
+        .background(AppTheme.sidebarDark)
         .overlay(alignment: .trailing) { Rectangle().fill(AppTheme.chromeDivider).frame(width: 1) }
     }
 }
@@ -149,9 +149,9 @@ private struct RailModeIcon: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(active ? AppTheme.chromeText : AppTheme.chromeMuted)
-                .frame(width: 24, height: 24)
+                .frame(width: 22, height: 22)
                 .background(active ? AppTheme.chromeDarkElevated.opacity(0.95) : .clear)
                 .overlay(Rectangle().stroke(active ? AppTheme.accent.opacity(0.45) : .clear, lineWidth: 1))
         }
@@ -189,7 +189,7 @@ struct LeftPanel: View {
                     commitPanel
                 }
             }
-            .background(AppTheme.chromeDark)
+            .background(AppTheme.sidebarDark)
             .overlay(alignment: .trailing) { Rectangle().fill(AppTheme.chromeDivider).frame(width: 1) }
         }
         .onAppear {
@@ -213,17 +213,17 @@ struct LeftPanel: View {
     private var projectPanel: some View {
         panelHeader(title: "Project", leadingIcon: "folder", trailingIcon: "plus")
 
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted)
             TextField("Filter files", text: $fileQuery)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AppTheme.chromeText)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 28)
+        .padding(.horizontal, 8)
+        .frame(height: 24)
         .background(AppTheme.fieldFill)
         .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
         .padding(.horizontal, 8)
@@ -254,7 +254,7 @@ struct LeftPanel: View {
         Divider().overlay(AppTheme.chromeDivider)
 
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 1) {
+            LazyVStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 4) {
                     Image(systemName: isProjectCollapsed ? "chevron.right" : "chevron.down")
                         .font(.system(size: 10, weight: .bold))
@@ -262,16 +262,16 @@ struct LeftPanel: View {
                     Image(systemName: "folder")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(AppTheme.chromeMuted)
-                    Text("grit")
-                        .font(.system(size: 16, weight: .bold))
+            Text("grit")
+                        .font(.system(size: 12.5, weight: .bold))
                         .foregroundStyle(AppTheme.chromeText)
                     Text("~/Projects/grit")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 9)
-                .frame(height: 30)
+                .padding(.horizontal, 8)
+                .frame(height: 24)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     toggleProjectDirectory(id: "__root__")
@@ -295,25 +295,25 @@ struct LeftPanel: View {
                     }
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
         }
     }
 
     @ViewBuilder
     private var commitPanel: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 6) {
             Image(systemName: "arrow.triangle.branch")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted)
             Text("Commit")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(AppTheme.chromeText)
             Button("Commit") {}
                 .buttonStyle(.plain)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 11.5, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
                 .background(AppTheme.chromeDarkElevated)
                 .overlay(Rectangle().stroke(AppTheme.accent.opacity(0.55), lineWidth: 1))
             Spacer(minLength: 0)
@@ -321,12 +321,12 @@ struct LeftPanel: View {
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(AppTheme.chromeMuted)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 32)
+        .padding(.horizontal, 8)
+        .frame(height: 26)
 
         Divider().overlay(AppTheme.chromeDivider)
 
-        HStack(spacing: 7) {
+        HStack(spacing: 6) {
             Image(systemName: "square")
                 .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(AppTheme.chromeMuted)
@@ -342,8 +342,8 @@ struct LeftPanel: View {
             CommitToolIcon(symbol: "xmark")
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 25)
+        .padding(.horizontal, 8)
+        .frame(height: 22)
 
         Divider().overlay(AppTheme.chromeDivider)
 
@@ -404,12 +404,12 @@ struct LeftPanel: View {
                         }
                     }
                 }
-                .padding(.vertical, 5)
+                .padding(.vertical, 3)
             }
 
             Divider().overlay(AppTheme.chromeDivider)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 HStack(spacing: 8) {
                     Toggle("Amend", isOn: $amendCommit)
                         .toggleStyle(.checkbox)
@@ -429,29 +429,29 @@ struct LeftPanel: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(AppTheme.chromeMuted)
                 }
-                .frame(height: 19)
+                .frame(height: 16)
 
                 TextEditor(text: $commitMessage)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(AppTheme.chromeText)
-                    .padding(5)
-                    .frame(height: 90)
+                    .padding(4)
+                    .frame(height: 74)
                     .background(AppTheme.editorBackground)
                     .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
 
                 HStack(spacing: 7) {
                     Button("Commit") {}
                         .buttonStyle(.plain)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 11.5, weight: .bold))
                         .foregroundStyle(.white)
-                        .frame(width: 72, height: 24)
+                        .frame(width: 68, height: 21)
                         .background(AppTheme.accent)
 
                     Button("Commit and Push...") {}
                         .buttonStyle(.plain)
-                        .font(.system(size: 12.5, weight: .semibold))
+                        .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(AppTheme.chromeText)
-                        .frame(width: 128, height: 24)
+                        .frame(width: 118, height: 21)
                         .background(AppTheme.chromeDarkElevated)
                         .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
 
@@ -461,34 +461,34 @@ struct LeftPanel: View {
                         .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(AppTheme.chromeDark.opacity(0.65))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 5)
+            .background(AppTheme.sidebarDark.opacity(0.92))
         }
     }
 
     @ViewBuilder
     private func panelHeader(title: String, leadingIcon: String, trailingIcon: String?) -> some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 6) {
             Image(systemName: leadingIcon)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted)
             Text(title)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 12.5, weight: .bold))
                 .foregroundStyle(AppTheme.chromeText)
             Spacer(minLength: 0)
             if let trailingIcon {
                 Button {} label: {
                     Image(systemName: trailingIcon)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(AppTheme.chromeMuted)
-                        .frame(width: 16, height: 16)
+                        .frame(width: 14, height: 14)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 9)
-        .frame(height: 34)
+        .padding(.horizontal, 8)
+        .frame(height: 27)
     }
 
     private func switchMode(_ mode: SidebarMode) {
@@ -828,7 +828,7 @@ private struct ProjectTreeRow: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Color.clear.frame(width: CGFloat(entry.depth) * 10, height: 1)
+            Color.clear.frame(width: CGFloat(entry.depth) * 8, height: 1)
 
             if entry.node.isDirectory {
                 Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
@@ -845,7 +845,7 @@ private struct ProjectTreeRow: View {
             }
 
             Text(entry.node.name)
-                .font(.system(size: 14, weight: .regular))
+                .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(isSelected ? AppTheme.chromeText : AppTheme.chromeMuted)
                 .lineLimit(1)
 
@@ -861,10 +861,10 @@ private struct ProjectTreeRow: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 25)
+        .padding(.horizontal, 8)
+        .frame(height: 21)
         .contentShape(Rectangle())
-        .background(isSelected ? AppTheme.chromeDarkElevated.opacity(0.74) : .clear)
+        .background(isSelected ? Color.white.opacity(0.10) : .clear)
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(isSelected ? AppTheme.accent : .clear)
@@ -924,16 +924,16 @@ private struct CommitSectionHeader: View {
             Image(systemName: expanded ? "chevron.down" : "chevron.right")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(AppTheme.chromeMuted)
-            Text(title)
-                .font(.system(size: 13, weight: .bold))
+                Text(title)
+                .font(.system(size: 12.5, weight: .bold))
                 .foregroundStyle(AppTheme.chromeText)
             Text("\(count) files")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 25)
+        .padding(.horizontal, 8)
+        .frame(height: 21)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
     }
@@ -947,7 +947,7 @@ private struct CommitTreeRow: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Color.clear.frame(width: CGFloat(entry.depth - 1) * 11, height: 1)
+            Color.clear.frame(width: CGFloat(entry.depth - 1) * 9, height: 1)
 
             if entry.isDirectory {
                 Image(systemName: isSelected ? "checkmark.square.fill" : "square")
@@ -960,11 +960,11 @@ private struct CommitTreeRow: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeMuted)
                 Text(entry.name)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(AppTheme.chromeText.opacity(0.9))
                     .lineLimit(1)
                 Text("\(entry.fileCount) file\(entry.fileCount == 1 ? "" : "s")")
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
             } else {
                 Image(systemName: isSelected ? "checkmark.square.fill" : "square")
@@ -974,17 +974,17 @@ private struct CommitTreeRow: View {
                     .font(.system(size: 11.5, weight: .regular))
                     .foregroundStyle(statusColor(entry.statusItem?.status ?? ""))
                 Text(entry.name)
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(isSelected ? AppTheme.chromeText : statusTextColor(entry.statusItem?.status ?? ""))
                     .lineLimit(1)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 22)
+        .padding(.horizontal, 8)
+        .frame(height: 21)
         .contentShape(Rectangle())
-        .background(isSelected ? AppTheme.chromeDarkElevated.opacity(0.74) : .clear)
+        .background(isSelected ? Color.white.opacity(0.10) : .clear)
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(isSelected ? AppTheme.accent : .clear)
@@ -1173,8 +1173,8 @@ private struct FileDetailView: View {
             TextEditor(text: $text)
                 .font(.system(size: 13.5, weight: .regular, design: .monospaced))
                 .foregroundStyle(AppTheme.chromeText)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
                 .background(AppTheme.editorBackground)
         } else {
             ScrollView {
@@ -1183,8 +1183,8 @@ private struct FileDetailView: View {
                     .foregroundStyle(AppTheme.chromeText)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .textSelection(.enabled)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
             }
             .background(AppTheme.editorBackground)
         }
@@ -1221,9 +1221,9 @@ private enum DiffFontPreset: String, CaseIterable {
 
     var rowHeight: CGFloat {
         switch self {
-        case .small: return 21
-        case .medium: return 22
-        case .large: return 24
+        case .small: return 20
+        case .medium: return 21
+        case .large: return 23
         }
     }
 }
@@ -1254,7 +1254,7 @@ private struct EditorTabs: View {
             Spacer(minLength: 0)
         }
         .padding(.leading, 4)
-        .frame(height: 28)
+        .frame(height: 24)
         .background(AppTheme.chromeDark)
         .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
     }
@@ -1275,7 +1275,7 @@ private struct EditorTabs: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(selected ? AppTheme.accent : AppTheme.chromeMuted.opacity(0.9))
                     Text(title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(selected ? AppTheme.chromeText : AppTheme.chromeMuted)
                 }
             }
@@ -1309,7 +1309,7 @@ private struct EditorTabs: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 9)
-        .frame(height: 27)
+        .frame(height: 23)
         .background(selected ? AppTheme.chromeDarkElevated : AppTheme.chromeDark)
         .overlay(alignment: .bottom) {
             Rectangle().fill(selected ? AppTheme.accent : .clear).frame(height: 1.5)
@@ -1570,7 +1570,7 @@ private struct IDEUnifiedDiff: View {
                                 }
                                 .overlay(
                                     Rectangle()
-                                        .fill((hoveredRowIndex == annotated.id) ? AppTheme.chromeDarkElevated.opacity(0.35) : .clear)
+                                        .fill((hoveredRowIndex == annotated.id) ? Color.white.opacity(0.05) : .clear)
                                 )
                                 .onHover { inside in
                                     if inside {
@@ -1696,7 +1696,7 @@ struct BottomPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
                 BottomTabButton(title: "Terminal", selected: activeTab == .terminal) {
                     activeTab = .terminal
                 }
@@ -1720,23 +1720,23 @@ struct BottomPanel: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText)
-                .padding(.horizontal, 7)
+                .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(AppTheme.chromeDarkElevated)
                 .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
 
                 Text("New Tab")
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeText)
-                    .padding(.horizontal, 7)
+                    .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(AppTheme.chromeDarkElevated)
                     .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
             }
-            .padding(.horizontal, 8)
-            .frame(height: 24)
+            .padding(.horizontal, 7)
+            .frame(height: 22)
             .background(AppTheme.chromeDark)
             .overlay(alignment: .top) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
             .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
@@ -1759,10 +1759,10 @@ struct BottomPanel: View {
                     }
                 }
             }
-            .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
             .foregroundStyle(AppTheme.chromeMuted)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(7)
+            .padding(6)
             .background(AppTheme.chromeDarkElevated)
         }
     }
@@ -1772,14 +1772,14 @@ private struct TerminalPanel: View {
     @ObservedObject var viewModel: RepoViewModel
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 6) {
+        VStack(spacing: 5) {
+            HStack(spacing: 5) {
                 TextField("Command", text: $viewModel.terminalCommand)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(AppTheme.chromeText)
-                    .padding(.horizontal, 8)
-                    .frame(height: 22)
+                    .padding(.horizontal, 7)
+                    .frame(height: 20)
                     .background(AppTheme.fieldFill)
                     .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
 
@@ -1787,9 +1787,9 @@ private struct TerminalPanel: View {
                     Task { await viewModel.runTerminalCommand() }
                 }
                 .buttonStyle(.plain)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(viewModel.isTerminalRunning ? AppTheme.chromeMuted : AppTheme.chromeText)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 7)
                 .padding(.vertical, 3)
                 .background(AppTheme.chromeDarkElevated)
                 .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
@@ -1798,7 +1798,7 @@ private struct TerminalPanel: View {
 
             ScrollView {
                 Text(viewModel.terminalOutput)
-                    .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(AppTheme.chromeMuted)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)

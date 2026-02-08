@@ -2,19 +2,21 @@ import SwiftUI
 
 enum AppTheme {
     static let accent = Color(red: 0.21, green: 0.49, blue: 0.86)
-    static let accentSecondary = Color(red: 0.38, green: 0.58, blue: 0.92)
-    static let backgroundTop = Color(red: 0.10, green: 0.12, blue: 0.17)
-    static let backgroundBottom = Color(red: 0.10, green: 0.12, blue: 0.17)
-    static let panelStroke = Color.white.opacity(0.06)
-    static let mutedText = Color(red: 0.58, green: 0.62, blue: 0.70)
-    static let fieldFill = Color(red: 0.20, green: 0.24, blue: 0.33)
-    static let chromeDark = Color(red: 0.13, green: 0.16, blue: 0.23)
-    static let chromeDarkElevated = Color(red: 0.17, green: 0.21, blue: 0.30)
-    static let chromeDivider = Color.white.opacity(0.14)
-    static let chromeText = Color(red: 0.87, green: 0.89, blue: 0.93)
-    static let chromeMuted = Color(red: 0.63, green: 0.68, blue: 0.76)
-    static let editorBackground = Color(red: 0.08, green: 0.11, blue: 0.16)
-    static let editorHeader = Color(red: 0.12, green: 0.15, blue: 0.22)
+    static let accentSecondary = Color(red: 0.31, green: 0.59, blue: 0.95)
+    static let chromeDark = Color(red: 0.094, green: 0.102, blue: 0.122)      // #181A1F
+    static let sidebarDark = Color(red: 0.082, green: 0.090, blue: 0.110)     // #15171C
+    static let mainDark = Color(red: 0.106, green: 0.118, blue: 0.141)        // #1B1E24
+    static let backgroundTop = mainDark
+    static let backgroundBottom = mainDark
+    static let panelStroke = Color.white.opacity(0.08)
+    static let mutedText = Color.white.opacity(0.45)
+    static let fieldFill = Color.white.opacity(0.10)
+    static let chromeDarkElevated = Color.white.opacity(0.07)
+    static let chromeDivider = Color.white.opacity(0.08)
+    static let chromeText = Color.white.opacity(0.85)
+    static let chromeMuted = Color.white.opacity(0.45)
+    static let editorBackground = mainDark
+    static let editorHeader = mainDark
     static let editorDivider = Color.white.opacity(0.08)
 
     static let backgroundGradient = LinearGradient(
