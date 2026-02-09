@@ -51,13 +51,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.isMovableByWindowBackground = false
         window.tabbingMode = .disallowed
         window.toolbar = nil
-        window.backgroundColor = NSColor(calibratedRed: 0.10, green: 0.12, blue: 0.17, alpha: 1.0)
+        window.backgroundColor = NSColor.windowBackgroundColor
         window.titlebarSeparatorStyle = .automatic
         window.styleMask.remove(.fullSizeContentView)
         window.collectionBehavior.remove(.fullScreenAuxiliary)
         window.collectionBehavior.insert(.fullScreenPrimary)
-        NSApp.appearance = NSAppearance(named: .darkAqua)
-        window.appearance = NSAppearance(named: .darkAqua)
     }
 
     func window(

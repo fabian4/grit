@@ -57,7 +57,7 @@ struct DiffView: View {
             Rectangle()
                 .fill(AppTheme.chromeDivider.opacity(0.7))
                 .frame(width: 1)
-                .padding(.leading, 80)
+                .padding(.leading, 76)
         }
         .background(AppTheme.editorBackground)
     }
@@ -70,16 +70,16 @@ private struct DiffRowUnified: View {
         HStack(alignment: .top, spacing: 8) {
             Text(line.oldLine.map(String.init) ?? "")
                 .frame(width: 34, alignment: .trailing)
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.95))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.84))
             Text(line.newLine.map(String.init) ?? "")
                 .frame(width: 34, alignment: .trailing)
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.95))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.84))
             Text(line.text)
                 .foregroundStyle(textColor)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(.system(size: 12.5, weight: .regular, design: .monospaced))
-        .padding(.vertical, 2)
+        .font(.system(size: 12, weight: .regular, design: .monospaced))
+        .padding(.vertical, 1)
         .padding(.horizontal, 8)
         .background(backgroundColor)
     }
@@ -133,13 +133,13 @@ private struct DiffRowSideBySide: View {
         HStack(alignment: .top, spacing: 8) {
             Text(lineNumber.map(String.init) ?? "")
                 .frame(width: 34, alignment: .trailing)
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.95))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.84))
             Text(text)
                 .foregroundStyle(AppTheme.chromeText)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(.system(size: 12.5, weight: .regular, design: .monospaced))
-        .padding(.vertical, 2)
+        .font(.system(size: 12, weight: .regular, design: .monospaced))
+        .padding(.vertical, 1)
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(background)

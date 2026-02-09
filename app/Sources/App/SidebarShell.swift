@@ -50,7 +50,7 @@ struct SidebarShell: View {
                 tab("History", mode: .history)
                 Spacer(minLength: 0)
             }
-            .padding(2)
+            .padding(1.5)
             .background(AppTheme.chromeDark, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -58,7 +58,7 @@ struct SidebarShell: View {
             )
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
         .background(AppTheme.sidebarDark)
     }
 
@@ -68,13 +68,13 @@ struct SidebarShell: View {
         } label: {
             Text(title)
                 .font(.system(size: 11, weight: leftTab == mode ? .semibold : .medium))
-                .foregroundStyle(leftTab == mode ? AppTheme.chromeText : AppTheme.chromeMuted)
+                .foregroundStyle(leftTab == mode ? AppTheme.chromeText : AppTheme.chromeMuted.opacity(0.88))
                 .padding(.horizontal, 10)
-                .frame(height: 20)
-                .background(leftTab == mode ? AppTheme.chromeDarkElevated.opacity(1.0) : .clear, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .frame(height: 19)
+                .background(leftTab == mode ? AppTheme.chromeDarkElevated.opacity(1.0) : AppTheme.chromeDark.opacity(0.28), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(leftTab == mode ? AppTheme.chromeDivider : .clear, lineWidth: 1)
+                        .stroke(leftTab == mode ? AppTheme.chromeDivider : AppTheme.chromeDivider.opacity(0.2), lineWidth: 1)
                 }
         }
         .buttonStyle(SidebarTabButtonStyle())
@@ -102,7 +102,7 @@ struct SidebarShell: View {
 private struct SidebarTabButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .opacity(configuration.isPressed ? 0.80 : 1.0)
+            .opacity(configuration.isPressed ? 0.74 : 1.0)
             .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
             .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }

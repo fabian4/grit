@@ -43,9 +43,9 @@ struct ChangesPanel: View {
                 Task { await viewModel.stageAll() }
             } label: {
                 Image(systemName: "checkmark.square")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                    .frame(width: 18, height: 18)
+                    .frame(width: 17, height: 17)
             }
             .buttonStyle(.plain)
             .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.35)
@@ -55,16 +55,16 @@ struct ChangesPanel: View {
                 Task { await viewModel.unstageAll() }
             } label: {
                 Image(systemName: "square.slash")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                    .frame(width: 18, height: 18)
+                    .frame(width: 17, height: 17)
             }
             .buttonStyle(.plain)
             .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.35)
             .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
         }
         .padding(.horizontal, 10)
-        .frame(height: 28)
+        .frame(height: 27)
     }
 
     private var listBody: some View {
@@ -176,9 +176,9 @@ private struct ChangeRow: View {
         HStack(spacing: 6) {
             Button(action: onToggleStage) {
                 Image(systemName: item.isStaged ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 11, weight: .regular))
+                    .font(.system(size: 10.5, weight: .regular))
                     .foregroundStyle(item.isStaged ? AppTheme.accent : AppTheme.chromeMuted)
-                    .frame(width: 13, height: 13)
+                    .frame(width: 12, height: 12)
             }
             .buttonStyle(.plain)
 
@@ -197,9 +197,10 @@ private struct ChangeRow: View {
             ChangeStatsPill(additions: item.additions, deletions: item.deletions)
         }
         .padding(.horizontal, 8)
-        .frame(height: 22)
+        .frame(height: 21)
         .contentShape(Rectangle())
-        .background(isSelected ? AppTheme.chromeDarkElevated : .clear)
+        .background(isSelected ? AppTheme.chromeDarkElevated.opacity(0.95) : .clear)
+        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(isSelected ? AppTheme.accent.opacity(0.8) : .clear)
@@ -267,14 +268,14 @@ private struct ChangeStatsPill: View {
             if show {
                 HStack(spacing: 8) {
                     Text("+\(additions)")
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(Color.green.opacity(0.9))
                     Text("-\(deletions)")
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(Color.red.opacity(0.9))
                 }
-                .padding(.horizontal, 10)
-                .frame(height: 19)
+                .padding(.horizontal, 8)
+                .frame(height: 17)
                 .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)

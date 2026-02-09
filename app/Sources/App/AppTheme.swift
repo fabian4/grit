@@ -41,6 +41,14 @@ enum AppTheme {
     static let diffRemovedFill = Color(red: 0.36, green: 0.12, blue: 0.12).opacity(0.55)
     static let diffAddedStripe = Color(red: 0.20, green: 0.74, blue: 0.35).opacity(0.95)
     static let diffRemovedStripe = Color(red: 0.95, green: 0.35, blue: 0.35).opacity(0.95)
+    static let diffHunkFill = adaptive(
+        light: NSColor(calibratedRed: 0.88, green: 0.90, blue: 0.94, alpha: 1),
+        dark: NSColor(calibratedRed: 0.14, green: 0.16, blue: 0.21, alpha: 1)
+    )
+    static let diffHunkSelectedFill = adaptive(
+        light: NSColor(calibratedRed: 0.82, green: 0.86, blue: 0.95, alpha: 1),
+        dark: NSColor(calibratedRed: 0.18, green: 0.24, blue: 0.34, alpha: 1)
+    )
 
     static let backgroundGradient = LinearGradient(
         colors: [backgroundTop, backgroundBottom],

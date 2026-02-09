@@ -101,29 +101,38 @@ struct HistoryMainPanel: View {
                 Text("COMMIT MESSAGE")
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("AUTHOR")
-                    .frame(width: 170, alignment: .leading)
+                    .frame(width: 186, alignment: .leading)
                 Text("DATE")
-                    .frame(width: 84, alignment: .trailing)
+                    .frame(width: 96, alignment: .trailing)
             }
-            .font(.system(size: 10.5, weight: .bold))
+            .font(.system(size: 10, weight: .bold))
             .foregroundStyle(AppTheme.chromeMuted)
             .padding(.horizontal, 11)
-            .frame(height: 26)
+            .frame(height: 27)
             .background(AppTheme.panelDark)
 
-            ForEach(mockCommits) { commit in
+            ForEach(Array(mockCommits.enumerated()), id: \.element.id) { index, commit in
                 Button {
                     selectedCommitID = commit.id
                 } label: {
                     HStack(spacing: 0) {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(commit.id == selectedCommitID ? AppTheme.accent : AppTheme.chromeMuted.opacity(0.65))
-                                .frame(width: 6, height: 6)
+                        HStack(spacing: 8) {
+                            VStack(spacing: 0) {
+                                Circle()
+                                    .fill(commit.id == selectedCommitID ? AppTheme.accent : AppTheme.chromeMuted.opacity(0.65))
+                                    .frame(width: 6, height: 6)
+                                Rectangle()
+                                    .fill(AppTheme.chromeDivider.opacity(index < mockCommits.count - 1 ? 0.9 : 0))
+                                    .frame(width: 1)
+                                    .frame(maxHeight: .infinity)
+                            }
+                            .frame(width: 10, alignment: .top)
+                            .padding(.vertical, 4)
+
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 6) {
                                     Text(commit.title)
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(.system(size: 12.5, weight: .semibold))
                                         .foregroundStyle(AppTheme.chromeText)
                                         .lineLimit(1)
                                     if let tag = commit.tag {
@@ -155,19 +164,19 @@ struct HistoryMainPanel: View {
                                         .foregroundStyle(AppTheme.chromeText)
                                 }
                             Text(commit.author)
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 11.5, weight: .medium))
                                 .foregroundStyle(AppTheme.chromeMuted)
                                 .lineLimit(1)
                         }
-                        .frame(width: 170, alignment: .leading)
+                        .frame(width: 186, alignment: .leading)
 
                         Text(commit.time)
-                            .font(.system(size: 11.5, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(AppTheme.chromeMuted)
-                            .frame(width: 84, alignment: .trailing)
+                            .frame(width: 96, alignment: .trailing)
                     }
                     .padding(.horizontal, 11)
-                    .frame(height: commit.id == selectedCommitID ? 50 : 41)
+                    .frame(height: commit.id == selectedCommitID ? 50 : 40)
                     .background(commit.id == selectedCommitID ? AppTheme.chromeDarkElevated.opacity(0.7) : .clear)
                     .overlay(alignment: .leading) {
                         Rectangle()
@@ -186,25 +195,37 @@ struct HistoryMainPanel: View {
     }
 
     private var detailCard: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 11) {
             Circle()
                 .fill(AppTheme.accent.opacity(0.6))
-                .frame(width: 34, height: 34)
+                .frame(width: 36, height: 36)
                 .overlay {
                     Text(selectedCommit.initials)
-                        .font(.system(size: 11.5, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(AppTheme.chromeText)
                 }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(selectedCommit.title)
-                    .font(.system(size: 29, weight: .bold))
+                    .font(.system(size: 36, weight: .bold))
                     .foregroundStyle(AppTheme.chromeText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                Text("\(selectedCommit.author) committed 2 hours ago  •  \(selectedCommit.id)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeMuted)
+                HStack(spacing: 8) {
+                    Text("\(selectedCommit.author) committed 2 hours ago")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AppTheme.chromeMuted)
+                    Text("•")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.8))
+                    Text(selectedCommit.id)
+                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(AppTheme.accent.opacity(0.9))
+                        .padding(.horizontal, 6)
+                        .frame(height: 18)
+                        .background(AppTheme.accent.opacity(0.14))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
             }
             Spacer(minLength: 0)
             HStack(spacing: 8) {
@@ -217,14 +238,49 @@ struct HistoryMainPanel: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(height: 66)
+        .padding(.vertical, 7)
+        .frame(height: 84)
         .background(AppTheme.panelDark)
     }
 
     private var diffSection: some View {
-        DiffView(lines: viewModel.diffLines.isEmpty ? fallbackDiff : viewModel.diffLines, mode: .unified)
-            .background(AppTheme.editorBackground)
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.8))
+                Image(systemName: "doc.text")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted)
+                Text("src/hooks/useTheme.ts")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.95))
+                Spacer(minLength: 0)
+                Image(systemName: "eye")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.8))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 27)
+            .background(AppTheme.panelDark)
+
+            Divider().overlay(AppTheme.chromeDivider.opacity(0.9))
+
+            HStack {
+                Text(currentHunkHeader)
+                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 23)
+            .background(AppTheme.panelDark.opacity(0.85))
+
+            Divider().overlay(AppTheme.chromeDivider.opacity(0.9))
+
+            DiffView(lines: viewModel.diffLines.isEmpty ? fallbackDiff : viewModel.diffLines, mode: .unified)
+                .background(AppTheme.editorBackground)
+        }
     }
 
     private func statPill(text: String, tint: Color) -> some View {
@@ -245,5 +301,9 @@ struct HistoryMainPanel: View {
             DiffLine(id: "h3", kind: .added, oldLine: nil, newLine: 14, text: "+import { NativeLayout } from './components/NativeLayout';"),
             DiffLine(id: "h4", kind: .added, oldLine: nil, newLine: 15, text: "+import { useTheme } from './hooks/useTheme';")
         ]
+    }
+
+    private var currentHunkHeader: String {
+        (viewModel.diffLines.first(where: { $0.kind == .hunk }) ?? fallbackDiff.first(where: { $0.kind == .hunk }))?.text ?? "@@ -1,1 +1,1 @@"
     }
 }

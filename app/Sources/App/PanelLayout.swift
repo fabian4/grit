@@ -8,7 +8,7 @@ struct TopBar: View {
         HStack(spacing: 0) {
             leadingGroup
                 .padding(.leading, 68)
-                .frame(width: 238, alignment: .leading)
+                .frame(width: 246, alignment: .leading)
 
             Spacer(minLength: 0)
 
@@ -56,7 +56,7 @@ struct TopBar: View {
                         .tint(AppTheme.chromeMuted.opacity(0.8))
                 }
             }
-            .frame(width: 238, alignment: .trailing)
+            .frame(width: 246, alignment: .trailing)
             .padding(.trailing, 8)
         }
         .frame(height: 34)
@@ -72,7 +72,7 @@ struct TopBar: View {
                     .font(.system(size: 10.5, weight: .semibold))
                     .foregroundStyle(AppTheme.accentSecondary)
                 Text(shortPath)
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -91,7 +91,7 @@ struct TopBar: View {
                     }
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
                     .padding(.horizontal, 10)
-                    .frame(height: 24)
+                    .frame(height: 23)
                     .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -109,17 +109,17 @@ struct TopBar: View {
     private var centerGroup: some View {
         if viewModel.leftMode == .changes {
             searchField
-                .frame(width: 264)
+                .frame(width: 298)
         } else {
             HStack(spacing: 6) {
                 Image(systemName: "shippingbox")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
                 Text(repoName)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12.5, weight: .bold))
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
             }
-            .frame(width: 264, alignment: .center)
+            .frame(width: 298, alignment: .center)
         }
     }
 
@@ -138,17 +138,22 @@ struct TopBar: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11.5, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
-            TextField("Search", text: $viewModel.filterQuery)
+            TextField(
+                "",
+                text: $viewModel.filterQuery,
+                prompt: Text("Search")
+                    .foregroundColor(AppTheme.chromeMuted.opacity(0.75))
+            )
                 .textFieldStyle(.plain)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(AppTheme.chromeText)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 24)
+        .padding(.horizontal, 8)
+        .frame(height: 23)
         .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -161,17 +166,17 @@ struct TopBar: View {
             // MVP: read-only
         } label: {
             HStack(spacing: 6) {
-            Image(systemName: "arrow.triangle.branch")
+                Image(systemName: "arrow.triangle.branch")
                     .font(.system(size: 10.5, weight: .semibold))
                 Text(viewModel.currentBranch)
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
             }
             .foregroundStyle(AppTheme.chromeText.opacity(0.95))
             .padding(.horizontal, 10)
-            .frame(height: 24)
+            .frame(height: 23)
             .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -188,7 +193,7 @@ struct TopBar: View {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                .frame(width: 28, height: 24)
+                .frame(width: 26, height: 23)
                 .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -1015,7 +1020,7 @@ private struct CommitTreeRow: View {
 
 struct DiffPanel: View {
     @ObservedObject var viewModel: RepoViewModel
-    private let diffFontPreset: DiffFontPreset = .large
+    private let diffFontPreset: DiffFontPreset = .medium
     @State private var selectedHunkIndex: Int = 0
     @State private var focusSelectedHunk: Bool = false
 
@@ -1043,9 +1048,9 @@ struct DiffPanel: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             Text(breadcrumb)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 10.5, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -1053,8 +1058,8 @@ struct DiffPanel: View {
             Text(badgeText)
                 .font(.system(size: 10.5, weight: .bold))
                 .foregroundStyle(AppTheme.chromeMuted.opacity(0.75))
-                .padding(.horizontal, 8)
-                .frame(height: 18)
+                .padding(.horizontal, 7)
+                .frame(height: 17)
                 .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -1062,7 +1067,7 @@ struct DiffPanel: View {
                 )
         }
         .padding(.horizontal, 12)
-        .frame(height: 28)
+        .frame(height: 29)
         .background(AppTheme.panelDark)
     }
 
@@ -1246,16 +1251,16 @@ private enum DiffFontPreset: String, CaseIterable {
 
     var codeSize: CGFloat {
         switch self {
-        case .small: return 12.0
-        case .medium: return 12.5
+        case .small: return 11.5
+        case .medium: return 12.0
         case .large: return 13.5
         }
     }
 
     var rowHeight: CGFloat {
         switch self {
-        case .small: return 20
-        case .medium: return 21
+        case .small: return 19
+        case .medium: return 20
         case .large: return 22
         }
     }
@@ -1544,14 +1549,14 @@ private struct IDEUnifiedDiff: View {
                                         .buttonStyle(.plain)
                                     }
                                     Text(side == .old ? row.oldText : row.newText)
-                                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                                         .foregroundStyle((annotated.hunkIndex == selectedHunkIndex) ? AppTheme.chromeText : AppTheme.accent.opacity(0.95))
                                         .lineLimit(1)
                                     Spacer(minLength: 0)
                                 }
-                                .padding(.horizontal, 10)
-                                .frame(height: 24)
-                                .background((annotated.hunkIndex == selectedHunkIndex) ? AppTheme.accent.opacity(0.18) : AppTheme.chromeDarkElevated.opacity(0.55))
+                                .padding(.horizontal, 8)
+                                .frame(height: 22)
+                                .background((annotated.hunkIndex == selectedHunkIndex) ? AppTheme.diffHunkSelectedFill : AppTheme.diffHunkFill)
                                 .overlay(alignment: .top) { Rectangle().fill(AppTheme.chromeDivider.opacity(0.65)).frame(height: 1) }
                                 .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider.opacity(0.65)).frame(height: 1) }
                             } else {
@@ -1580,11 +1585,11 @@ private struct IDEUnifiedDiff: View {
                                     }
                                 }()
 
-                                HStack(spacing: 7) {
+                                HStack(spacing: 6) {
                                     Text(lineNum.map(String.init) ?? "")
                                         .font(.system(size: fontPreset.lineNumberSize, weight: .regular, design: .monospaced))
-                                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                                        .frame(width: 34, alignment: .trailing)
+                                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.82))
+                                        .frame(width: 32, alignment: .trailing)
 
                                     Text(text)
                                         .font(.system(size: fontPreset.codeSize, weight: .regular, design: .monospaced))

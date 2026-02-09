@@ -37,7 +37,15 @@ struct WorkspaceShell: View {
     }
 
     private func normalizeSplitRatio(for tab: LeftPanelMode) {
-        let target: CGFloat = tab == .history ? 0.20 : 0.21
+        let target: CGFloat
+        switch tab {
+        case .changes:
+            target = 0.205
+        case .files:
+            target = 0.195
+        case .history:
+            target = 0.20
+        }
         guard abs(splitRatio - target) > 0.015 else { return }
         withAnimation(.easeInOut(duration: 0.15)) {
             splitRatio = target

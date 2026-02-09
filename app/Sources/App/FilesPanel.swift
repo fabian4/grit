@@ -109,7 +109,7 @@ private struct FileTreeRow: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Color.clear.frame(width: CGFloat(entry.depth) * 8, height: 1)
+            Color.clear.frame(width: CGFloat(entry.depth) * 10, height: 1)
 
             if entry.node.isDirectory {
                 Image(systemName: entry.isCollapsed ? "chevron.right" : "chevron.down")
@@ -125,16 +125,16 @@ private struct FileTreeRow: View {
             }
 
             Text(entry.node.name)
-                .font(.system(size: 11.5, weight: .regular))
-                .foregroundStyle(isSelected ? AppTheme.chromeText : AppTheme.chromeMuted)
+                .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium))
+                .foregroundStyle(isSelected ? AppTheme.chromeText : AppTheme.chromeMuted.opacity(0.95))
                 .lineLimit(1)
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 8)
-        .frame(height: 22)
+        .frame(height: 21)
         .contentShape(Rectangle())
-        .background(isSelected ? AppTheme.chromeDarkElevated : .clear)
+        .background(isSelected ? AppTheme.chromeDarkElevated.opacity(0.9) : .clear)
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(isSelected ? AppTheme.accent.opacity(0.8) : .clear)
