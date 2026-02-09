@@ -97,8 +97,8 @@ actor WorkspaceClient {
 
     private func runGit(_ args: [String], in directory: String) throws -> String {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["git"] + args
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = args
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
 
         let outputPipe = Pipe()

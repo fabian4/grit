@@ -29,6 +29,9 @@ struct WorkspaceShell: View {
             showGitError = viewModel.lastErrorMessage != nil
         }
         .onAppear {
+            if !viewModel.isRepoOpen && viewModel.leftMode == .changes {
+                viewModel.leftMode = .files
+            }
             normalizeSplitRatio(for: viewModel.leftMode)
         }
         .onChange(of: viewModel.leftMode) { newTab in

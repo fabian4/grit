@@ -7,7 +7,7 @@ struct SidebarShell: View {
     var body: some View {
         VStack(spacing: 0) {
             chrome
-            if leftTab == .changes {
+            if leftTab == .changes && viewModel.isRepoOpen {
                 ChangesPanel(viewModel: viewModel)
             } else if leftTab == .files {
                 FilesPanel(viewModel: viewModel)
@@ -57,6 +57,8 @@ struct SidebarShell: View {
         ) {
             leftTab = mode
         }
+        .opacity(mode == .changes && !viewModel.isRepoOpen ? 0.55 : 1.0)
+        .allowsHitTesting(!(mode == .changes && !viewModel.isRepoOpen))
     }
 
     private var chrome: some View {
@@ -67,6 +69,9 @@ struct SidebarShell: View {
     }
 
     private func applyTab() {
+        if leftTab == .changes && !viewModel.isRepoOpen {
+            leftTab = .files
+        }
         viewModel.leftMode = leftTab
         if leftTab == .changes {
             if viewModel.selectedPath != nil {

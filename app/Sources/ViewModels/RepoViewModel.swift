@@ -100,25 +100,44 @@ enum DiffScope: String, Hashable, CaseIterable, Identifiable {
 }
 
 final class RepoViewModel: ObservableObject {
+    private enum SessionKey {
+        static let repoPath = "session.repoPath"
+        static let leftMode = "session.leftMode"
+        static let selectedPath = "session.selectedPath"
+        static let selectedFileID = "session.selectedFileID"
+        static let filterQuery = "session.filterQuery"
+        static let openTabs = "session.openTabs"
+    }
+
     static let shared = RepoViewModel()
-    @Published var repoPath: String
+    @Published var repoPath: String {
+        didSet { persistString(repoPath, key: SessionKey.repoPath) }
+    }
     @Published var output: String = ""
     @Published var lastErrorMessage: String? = nil
     @Published var isRepoOpen: Bool = false
     @Published var isBusy: Bool = false
     @Published var statusItems: [StatusItem] = []
     @Published var fileTree: [FileNode] = []
-    @Published var selectedFileID: String? = nil
+    @Published var selectedFileID: String? = nil {
+        didSet { persistOptionalString(selectedFileID, key: SessionKey.selectedFileID) }
+    }
     @Published var fileContent: String = ""
-    @Published var selectedPath: String? = nil
+    @Published var selectedPath: String? = nil {
+        didSet { persistOptionalString(selectedPath, key: SessionKey.selectedPath) }
+    }
     @Published var selectedDiffScope: DiffScope = .unstaged
-    @Published var openTabs: [String] = []
+    @Published var openTabs: [String] = [] {
+        didSet { persistStringArray(openTabs, key: SessionKey.openTabs) }
+    }
     @Published var pinnedTabs: Set<String> = []
     @Published var detailOutput: String = ""
     @Published var hunks: [DiffHunk] = []
     @Published var selectedHunkID: String? = nil
     @Published var diffLines: [DiffLine] = []
-    @Published var leftMode: LeftPanelMode = .changes
+    @Published var leftMode: LeftPanelMode = .files {
+        didSet { persistString(leftMode.rawValue, key: SessionKey.leftMode) }
+    }
     @Published var diffMode: DiffViewMode = AppConfig.shared.diffView
     @Published var groupDiffByFolder: Bool = false
     @Published var isDetailEditable: Bool = false
@@ -127,18 +146,61 @@ final class RepoViewModel: ObservableObject {
     @Published var isTerminalRunning: Bool = false
     @Published var currentBranch: String = "-"
     @Published var commitMessage: String = ""
-    @Published var filterQuery: String = ""
+    @Published var filterQuery: String = "" {
+        didSet { persistString(filterQuery, key: SessionKey.filterQuery) }
+    }
 
     private let client = WorkspaceClient.shared
+    private let defaults = UserDefaults.standard
+    private var isRestoringSession = false
     private var fileIndex: [String: FileNode] = [:]
     private var treeOrder: [String] = []
 
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        self.repoPath = (home as NSString).appendingPathComponent("Projects/grit")
+        let fallbackPath = (home as NSString).appendingPathComponent("Projects/grit")
+        self.repoPath = defaults.string(forKey: SessionKey.repoPath) ?? fallbackPath
+
+        isRestoringSession = true
+        if let rawMode = defaults.string(forKey: SessionKey.leftMode), let mode = LeftPanelMode(rawValue: rawMode) {
+            leftMode = mode
+        }
+        selectedPath = defaults.string(forKey: SessionKey.selectedPath)
+        selectedFileID = defaults.string(forKey: SessionKey.selectedFileID)
+        filterQuery = defaults.string(forKey: SessionKey.filterQuery) ?? ""
+        openTabs = defaults.stringArray(forKey: SessionKey.openTabs) ?? []
+        isRestoringSession = false
+
         Task { @MainActor in
+            await self.refreshFiles()
+            if self.leftMode == .files {
+                await self.loadFileForSelection()
+            }
             guard !self.isRepoOpen else { return }
             await self.openRepo(path: self.repoPath)
+        }
+    }
+
+    private func persistString(_ value: String, key: String) {
+        guard !isRestoringSession else { return }
+        defaults.set(value, forKey: key)
+    }
+
+    private func persistOptionalString(_ value: String?, key: String) {
+        guard !isRestoringSession else { return }
+        if let value, !value.isEmpty {
+            defaults.set(value, forKey: key)
+        } else {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
+    private func persistStringArray(_ value: [String], key: String) {
+        guard !isRestoringSession else { return }
+        if value.isEmpty {
+            defaults.removeObject(forKey: key)
+        } else {
+            defaults.set(value, forKey: key)
         }
     }
 
@@ -156,6 +218,7 @@ final class RepoViewModel: ObservableObject {
             message = String(describing: error)
         }
         lastErrorMessage = message
+        print("[RepoViewModel] Error: \(message)")
     }
 
     @MainActor
@@ -177,6 +240,7 @@ final class RepoViewModel: ObservableObject {
     func openRepo(path: String) async {
         beginBusy()
         defer { endBusy() }
+        repoPath = path
         do {
             try await WorkspaceClient.shared.open(path: path)
             let root = try await WorkspaceClient.shared.root()
@@ -190,6 +254,11 @@ final class RepoViewModel: ObservableObject {
             output = String(describing: error)
             reportError(error)
             isRepoOpen = false
+            // Files view should still be usable even if git open fails.
+            await refreshFiles()
+            if leftMode == .files {
+                await loadFileForSelection()
+            }
         }
     }
 
@@ -215,20 +284,17 @@ final class RepoViewModel: ObservableObject {
             statusItems = parseStatus(result, numstat: numstat)
             currentBranch = (try? await WorkspaceClient.shared.branchName()) ?? "-"
             if statusItems.isEmpty {
-                selectedPath = nil
-                selectedFileID = nil
                 detailOutput = ""
-                fileContent = ""
                 hunks = []
                 selectedHunkID = nil
                 diffLines = []
-            } else if selectedPath == nil {
+            } else if selectedPath == nil && leftMode == .changes {
                 selectedPath = statusItems.first?.path
             }
-            if let path = selectedPath {
+            if leftMode == .changes, let path = selectedPath {
                 activateTab(path)
+                await loadDiffForSelection()
             }
-            await loadDiffForSelection()
             clearError()
         } catch {
             output = String(describing: error)

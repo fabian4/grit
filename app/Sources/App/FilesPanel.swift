@@ -11,7 +11,7 @@ struct FilesPanel: View {
         }
         .background(AppTheme.sidebarDark)
         .onAppear {
-            viewModel.leftMode = .files
+            restoreCollapsedState()
             if viewModel.fileTree.isEmpty {
                 Task { await viewModel.refreshFiles() }
             } else if !hasInitializedCollapseState {
@@ -20,6 +20,13 @@ struct FilesPanel: View {
         }
         .onChange(of: viewModel.fileTree) { _ in
             applyDefaultCollapseState()
+        }
+        .onChange(of: collapsed) { _ in
+            persistCollapsedState()
+        }
+        .onChange(of: viewModel.repoPath) { _ in
+            hasInitializedCollapseState = false
+            restoreCollapsedState()
         }
     }
 
@@ -46,7 +53,7 @@ struct FilesPanel: View {
                         }
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 2)
             }
         }
     }
@@ -99,6 +106,14 @@ struct FilesPanel: View {
     }
 
     private func applyDefaultCollapseState() {
+        let saved = savedCollapsedIDs()
+        if !saved.isEmpty {
+            let validIDs = Set(flattenProjectNodes(viewModel.fileTree, depth: 0, collapsed: []).map(\.node.id))
+            collapsed = saved.intersection(validIDs)
+            hasInitializedCollapseState = true
+            return
+        }
+
         var initial = allDirectoryIDs(in: viewModel.fileTree)
 
         // Expand ancestors of selected file so current context is visible.
@@ -119,6 +134,30 @@ struct FilesPanel: View {
 
         collapsed = initial
         hasInitializedCollapseState = true
+    }
+
+    private func collapseStorageKey() -> String {
+        "session.files.collapsed.\(viewModel.repoPath)"
+    }
+
+    private func savedCollapsedIDs() -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: collapseStorageKey()) ?? [])
+    }
+
+    private func restoreCollapsedState() {
+        let saved = savedCollapsedIDs()
+        guard !saved.isEmpty else { return }
+        collapsed = saved
+        hasInitializedCollapseState = true
+    }
+
+    private func persistCollapsedState() {
+        let key = collapseStorageKey()
+        if collapsed.isEmpty {
+            UserDefaults.standard.removeObject(forKey: key)
+        } else {
+            UserDefaults.standard.set(Array(collapsed), forKey: key)
+        }
     }
 
     private func allDirectoryIDs(in nodes: [FileNode]) -> Set<String> {
@@ -159,7 +198,7 @@ private struct FileTreeRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            Color.clear.frame(width: CGFloat(entry.depth) * 13, height: 1)
+            Color.clear.frame(width: CGFloat(entry.depth) * 10, height: 1)
 
             Group {
                 if entry.node.isDirectory {
@@ -168,28 +207,33 @@ private struct FileTreeRow: View {
                     Color.clear
                 }
             }
-            .frame(width: 12, alignment: .center)
+            .frame(width: 10, alignment: .center)
             .font(.system(size: 8, weight: .semibold))
-            .foregroundStyle(AppTheme.chromeMuted.opacity(0.58))
+            .foregroundStyle(AppTheme.chromeMuted.opacity(0.46))
 
             Image(systemName: entry.node.isDirectory ? "folder.fill" : fileSymbol(entry.node.name))
-                .font(.system(size: 11, weight: entry.node.isDirectory ? .medium : .regular))
+                .font(.system(size: 10.5, weight: entry.node.isDirectory ? .medium : .regular))
                 .foregroundStyle(fileColor(entry.node.name, isDirectory: entry.node.isDirectory))
-                .frame(width: 13, alignment: .center)
+                .frame(width: 12, alignment: .center)
                 .padding(.leading, 2)
-                .padding(.trailing, 7)
+                .padding(.trailing, 5)
 
             Text(entry.node.name)
-                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(isSelected ? AppTheme.chromeText.opacity(0.98) : AppTheme.chromeText.opacity(0.75))
+                .font(.system(size: 11.5, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? AppTheme.chromeText.opacity(0.96) : AppTheme.chromeText.opacity(0.76))
                 .lineLimit(1)
 
             Spacer(minLength: 0)
+
         }
         .padding(.horizontal, 7)
-        .frame(height: 24)
+        .frame(height: 20)
         .contentShape(Rectangle())
-        .background(isSelected ? Color(red: 0.235, green: 0.245, blue: 0.278).opacity(0.72) : (isHovering ? AppTheme.chromeDarkElevated.opacity(0.16) : .clear))
+        .background(
+            isSelected
+                ? Color(red: 0.218, green: 0.221, blue: 0.233).opacity(0.90)
+                : (isHovering ? AppTheme.chromeDarkElevated.opacity(0.10) : .clear)
+        )
         .onTapGesture(perform: onTap)
         .onHover { inside in
             isHovering = inside
@@ -208,15 +252,15 @@ private struct FileTreeRow: View {
     }
 
     private func fileColor(_ name: String, isDirectory: Bool) -> Color {
-        if isDirectory { return AppTheme.accentSecondary.opacity(0.72) }
+        if isDirectory { return Color(red: 0.36, green: 0.57, blue: 0.92).opacity(0.90) }
         let lowered = name.lowercased()
-        if lowered.hasSuffix(".swift") { return AppTheme.accent.opacity(0.78) }
-        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return AppTheme.accentSecondary.opacity(0.68) }
-        if lowered.hasSuffix(".md") { return AppTheme.chromeMuted.opacity(0.74) }
-        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return AppTheme.chromeMuted.opacity(0.70) }
-        if lowered == "makefile" { return AppTheme.chromeMuted.opacity(0.72) }
-        if lowered.hasSuffix(".rs") { return AppTheme.accentSecondary.opacity(0.64) }
-        return AppTheme.chromeMuted.opacity(0.66)
+        if lowered.hasSuffix(".swift") { return Color(red: 0.34, green: 0.63, blue: 0.97).opacity(0.84) }
+        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return AppTheme.accentSecondary.opacity(0.58) }
+        if lowered.hasSuffix(".md") { return AppTheme.chromeMuted.opacity(0.68) }
+        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return AppTheme.chromeMuted.opacity(0.62) }
+        if lowered == "makefile" { return AppTheme.chromeMuted.opacity(0.66) }
+        if lowered.hasSuffix(".rs") { return AppTheme.accentSecondary.opacity(0.58) }
+        return AppTheme.chromeMuted.opacity(0.58)
     }
 }
 

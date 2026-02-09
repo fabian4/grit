@@ -15,7 +15,6 @@ struct ChangesPanel: View {
         .background(AppTheme.sidebarDark)
         .overlay(alignment: .trailing) { Rectangle().fill(AppTheme.chromeDivider).frame(width: 1) }
         .onAppear {
-            viewModel.leftMode = .changes
             installKeyMonitor()
         }
         .onDisappear {

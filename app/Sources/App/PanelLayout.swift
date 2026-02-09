@@ -24,7 +24,7 @@ struct TopBar: View {
                 .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
                 .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
-                if viewModel.leftMode == .changes {
+                if viewModel.leftMode != .history {
                     Button("Fetch") {
                         viewModel.lastErrorMessage = "Fetch is not implemented in MVP."
                     }
@@ -68,8 +68,8 @@ struct TopBar: View {
 
     @ViewBuilder
     private var leadingGroup: some View {
-        if viewModel.leftMode == .changes {
-            if viewModel.isRepoOpen {
+        if viewModel.leftMode != .history {
+            if viewModel.isRepoOpen || !viewModel.fileTree.isEmpty {
                 HStack(spacing: 8) {
                     Image(systemName: "folder.fill")
                         .font(.system(size: 10.5, weight: .semibold))
@@ -135,7 +135,7 @@ struct TopBar: View {
 
     @ViewBuilder
     private var centerGroup: some View {
-        if viewModel.leftMode == .changes {
+        if viewModel.leftMode != .history {
             searchField
                 .frame(width: 298)
         } else {
@@ -152,15 +152,13 @@ struct TopBar: View {
     }
 
     private var repoName: String {
-        guard viewModel.isRepoOpen else { return "Grit" }
+        guard viewModel.isRepoOpen || !viewModel.fileTree.isEmpty else { return "Grit" }
         return URL(fileURLWithPath: viewModel.repoPath).lastPathComponent
     }
 
     private var shortPath: String {
-        if !viewModel.isRepoOpen {
-            return "~/Projects/grit-web"
-        }
         let path = viewModel.repoPath
+        if path.isEmpty { return "Choose folder" }
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         if path.hasPrefix(home + "/") {
             return "~/" + path.dropFirst(home.count + 1)
@@ -241,7 +239,11 @@ struct TopBar: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Open Repo"
-        panel.message = "Choose a local Git repository"
+        panel.message = "Choose a working directory"
+        let current = URL(fileURLWithPath: viewModel.repoPath)
+        if FileManager.default.fileExists(atPath: current.path) {
+            panel.directoryURL = current
+        }
         if panel.runModal() == .OK, let url = panel.url {
             Task { await viewModel.openRepo(path: url.path) }
         }
@@ -1128,7 +1130,6 @@ struct DiffPanel: View {
     }
 
     private var breadcrumb: String {
-        guard viewModel.isRepoOpen else { return "Diff" }
         guard let path = viewModel.selectedPath, !path.isEmpty else { return "Diff" }
         let parts = path.split(separator: "/").map(String.init)
         if parts.count <= 1 { return path }
@@ -1158,16 +1159,14 @@ struct DiffPanel: View {
 
     @ViewBuilder
     private var filesBody: some View {
-        if !viewModel.isRepoOpen {
-            EmptyMainState(title: "Open a repository", subtitle: "Use Open in the top bar")
-        } else if viewModel.selectedPath == nil {
-            EmptyMainState(title: "Select a file to view file", subtitle: nil)
+        if viewModel.selectedPath == nil {
+            EmptyMainState(title: "Select a file to view", subtitle: nil)
         } else {
             FileDetailView(
                 text: $viewModel.fileContent,
                 path: viewModel.selectedPath,
                 isEditable: false,
-                emptyText: "Select a file to view file"
+                emptyText: "Select a file to view"
             )
         }
     }

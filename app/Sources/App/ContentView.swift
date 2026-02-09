@@ -4,6 +4,7 @@ import AppKit
 struct ContentView: View {
     @StateObject private var viewModel = RepoViewModel.shared
     @FocusState private var isPathFocused: Bool
+    @AppStorage("session.splitRatio") private var persistedSplitRatio: Double = AppConfig.shared.splitRatio
     @State private var splitRatio: CGFloat = CGFloat(AppConfig.shared.splitRatio)
 
     var body: some View {
@@ -22,6 +23,17 @@ struct ContentView: View {
                 .onAppear {
                     NSApp.activate(ignoringOtherApps: true)
                     isPathFocused = true
+                    splitRatio = CGFloat(persistedSplitRatio)
+                    if !viewModel.isRepoOpen {
+                        Task { await viewModel.openRepo(path: viewModel.repoPath) }
+                    }
+                }
+                .onChange(of: splitRatio) { newValue in
+                    let clamped = min(max(newValue, 0.18), 0.35)
+                    if abs(clamped - newValue) > 0.0001 {
+                        splitRatio = clamped
+                    }
+                    persistedSplitRatio = Double(clamped)
                 }
                 .background(AppTheme.mainDark)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -29,9 +41,5 @@ struct ContentView: View {
         .frame(minWidth: 900, minHeight: 600)
         .background(AppTheme.windowBackdrop)
         .preferredColorScheme(.dark)
-        .onAppear {
-            NSApp.activate(ignoringOtherApps: true)
-            isPathFocused = true
-        }
     }
 }
