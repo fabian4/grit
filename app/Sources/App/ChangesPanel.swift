@@ -9,7 +9,7 @@ struct ChangesPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             toolbar
-            Divider().overlay(AppTheme.chromeDivider)
+            Divider().overlay(AppTheme.chromeDividerStrong)
             listBody
         }
         .background(AppTheme.sidebarDark)
@@ -36,16 +36,16 @@ struct ChangesPanel: View {
     private var toolbar: some View {
         HStack(spacing: 8) {
             Text("CHANGES")
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.96))
             Spacer(minLength: 0)
             Button {
                 Task { await viewModel.stageAll() }
             } label: {
                 Image(systemName: "checkmark.square")
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                    .frame(width: 17, height: 17)
+                    .frame(width: 16, height: 16)
             }
             .buttonStyle(.plain)
             .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.35)
@@ -55,22 +55,22 @@ struct ChangesPanel: View {
                 Task { await viewModel.unstageAll() }
             } label: {
                 Image(systemName: "square.slash")
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                    .frame(width: 17, height: 17)
+                    .frame(width: 16, height: 16)
             }
             .buttonStyle(.plain)
             .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.35)
             .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
         }
-        .padding(.horizontal, 10)
-        .frame(height: 27)
+        .padding(.horizontal, 9)
+        .frame(height: 26)
     }
 
     private var listBody: some View {
         ScrollView {
             if !viewModel.isRepoOpen {
-                EmptyLeftState(title: "No repo open", subtitle: "Use Open Repo")
+                EmptyLeftState(title: "No repo open", subtitle: "Use Open Repo in the top bar")
                     .padding(.top, 12)
             } else if viewModel.statusItems.isEmpty {
                 EmptyLeftState(title: "Working tree clean", subtitle: nil)
@@ -171,6 +171,8 @@ private struct ChangeRow: View {
     let onSelect: () -> Void
     let onToggleStage: () -> Void
     let onDiscard: () -> Void
+    @State private var isHovering: Bool = false
+    @GestureState private var isPressing: Bool = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -183,9 +185,9 @@ private struct ChangeRow: View {
             .buttonStyle(.plain)
 
             Image(systemName: fileSymbol)
-                .font(.system(size: 12.5, weight: .regular))
+                .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(fileColor)
-                .frame(width: 15, alignment: .leading)
+                .frame(width: 14, alignment: .leading)
 
             Text(fileName)
                 .font(.system(size: 11.5, weight: .medium))
@@ -199,14 +201,31 @@ private struct ChangeRow: View {
         .padding(.horizontal, 8)
         .frame(height: 21)
         .contentShape(Rectangle())
-        .background(isSelected ? AppTheme.chromeDarkElevated.opacity(0.95) : .clear)
+        .background(
+            isSelected
+                ? AppTheme.chromeDarkElevated.opacity(0.95)
+                : (isPressing ? AppTheme.chromeDarkElevated.opacity(0.62) : (isHovering ? AppTheme.chromeDarkElevated.opacity(0.38) : .clear))
+        )
         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(isSelected ? AppTheme.accent.opacity(0.8) : .clear)
                 .frame(width: 2)
         }
+        .overlay {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .stroke(isHovering && !isSelected ? AppTheme.chromeDivider.opacity(0.55) : .clear, lineWidth: 1)
+        }
         .onTapGesture(perform: onSelect)
+        .onHover { inside in
+            isHovering = inside
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .updating($isPressing) { _, state, _ in
+                    state = true
+                }
+        )
         .contextMenu {
             Button(item.isStaged ? "Unstage" : "Stage") { onToggleStage() }
             Button(item.isUntracked ? "Delete Untracked" : "Discard", role: .destructive) { onDiscard() }
@@ -245,16 +264,17 @@ private struct EmptyLeftState: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeText.opacity(0.9))
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeText.opacity(0.92))
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.82))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 2)
     }
 }
 
@@ -274,7 +294,7 @@ private struct ChangeStatsPill: View {
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(Color.red.opacity(0.9))
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 7)
                 .frame(height: 17)
                 .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay(

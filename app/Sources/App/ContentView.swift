@@ -16,7 +16,7 @@ struct ContentView: View {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(AppTheme.chromeDivider, lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.22), radius: 18, x: 0, y: 8)
+                .shadow(color: Color.black.opacity(0.14), radius: 12, x: 0, y: 4)
                 .padding(12)
                 .frame(minWidth: 900, minHeight: 600)
                 .onAppear {
@@ -28,6 +28,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 900, minHeight: 600)
         .background(AppTheme.windowBackdrop)
+        .preferredColorScheme(.dark)
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             isPathFocused = true

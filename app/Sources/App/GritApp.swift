@@ -51,7 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.isMovableByWindowBackground = false
         window.tabbingMode = .disallowed
         window.toolbar = nil
-        window.backgroundColor = NSColor.windowBackgroundColor
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = NSColor(calibratedRed: 0.154, green: 0.154, blue: 0.154, alpha: 1.0)
         window.titlebarSeparatorStyle = .automatic
         window.styleMask.remove(.fullSizeContentView)
         window.collectionBehavior.remove(.fullScreenAuxiliary)

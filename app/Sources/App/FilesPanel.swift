@@ -11,7 +11,7 @@ struct FilesPanel: View {
         .background(AppTheme.sidebarDark)
         .onAppear {
             viewModel.leftMode = .files
-            if viewModel.isRepoOpen, viewModel.fileTree.isEmpty {
+            if viewModel.fileTree.isEmpty {
                 Task { await viewModel.refreshFiles() }
             }
         }
@@ -19,15 +19,12 @@ struct FilesPanel: View {
 
     private var listBody: some View {
         ScrollView {
-            if !viewModel.isRepoOpen {
-                FilesEmptyState(title: "No repo open", subtitle: "Use Open in the top bar")
-                    .padding(.top, 18)
-            } else if filteredRows.isEmpty {
+            if filteredRows.isEmpty {
                 FilesEmptyState(
                     title: "No files",
                     subtitle: viewModel.filterQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "No matching files"
                 )
-                    .padding(.top, 18)
+                    .padding(.top, 14)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(filteredRows, id: \.node.id) { entry in
@@ -43,7 +40,7 @@ struct FilesPanel: View {
                         }
                     }
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -106,63 +103,87 @@ private struct FileTreeRow: View {
     let entry: FileRowEntry
     let isSelected: Bool
     let onTap: () -> Void
+    @State private var isHovering: Bool = false
+    @GestureState private var isPressing: Bool = false
 
     var body: some View {
-        HStack(spacing: 5) {
-            Color.clear.frame(width: CGFloat(entry.depth) * 10, height: 1)
+        HStack(spacing: 0) {
+            Color.clear.frame(width: CGFloat(entry.depth) * 12, height: 1)
 
-            if entry.node.isDirectory {
-                Image(systemName: entry.isCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                Image(systemName: "folder")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.accentSecondary.opacity(0.95))
-            } else {
-                Image(systemName: fileSymbol(entry.node.name))
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(fileColor(entry.node.name))
+            Group {
+                if entry.node.isDirectory {
+                    Image(systemName: entry.isCollapsed ? "chevron.right" : "chevron.down")
+                } else {
+                    Color.clear
+                }
             }
+            .frame(width: 11, alignment: .center)
+            .font(.system(size: 8.5, weight: .bold))
+            .foregroundStyle(AppTheme.chromeMuted.opacity(0.60))
+
+            Image(systemName: entry.node.isDirectory ? "folder.fill" : fileSymbol(entry.node.name))
+                .font(.system(size: 10.0, weight: entry.node.isDirectory ? .medium : .regular))
+                .foregroundStyle(fileColor(entry.node.name, isDirectory: entry.node.isDirectory))
+                .frame(width: 12, alignment: .center)
+                .padding(.leading, 3)
+                .padding(.trailing, 6)
 
             Text(entry.node.name)
-                .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium))
-                .foregroundStyle(isSelected ? AppTheme.chromeText : AppTheme.chromeMuted.opacity(0.95))
+                .font(.system(size: 10.6, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? AppTheme.chromeText.opacity(0.92) : AppTheme.chromeText.opacity(0.68))
                 .lineLimit(1)
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 8)
-        .frame(height: 21)
+        .frame(height: 22)
         .contentShape(Rectangle())
-        .background(isSelected ? AppTheme.chromeDarkElevated.opacity(0.9) : .clear)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(isSelected ? AppTheme.accent.opacity(0.8) : .clear)
-                .frame(width: 2)
+        .background(
+            isSelected
+                ? Color(red: 0.205, green: 0.218, blue: 0.246).opacity(0.78)
+                : (isPressing ? AppTheme.chromeDarkElevated.opacity(0.38) : (isHovering ? AppTheme.chromeDarkElevated.opacity(0.18) : .clear))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 2.5, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                .stroke(
+                    isSelected ? AppTheme.chromeDivider.opacity(0.36) : (isHovering ? AppTheme.chromeDivider.opacity(0.24) : .clear),
+                    lineWidth: 1
+                )
         }
         .onTapGesture(perform: onTap)
+        .onHover { inside in
+            isHovering = inside
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .updating($isPressing) { _, state, _ in
+                    state = true
+                }
+        )
     }
 
     private func fileSymbol(_ name: String) -> String {
         let lowered = name.lowercased()
         if lowered.hasSuffix(".swift") { return "swift" }
         if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return "curlybraces" }
-        if lowered.hasSuffix(".md") { return "text.alignleft" }
+        if lowered.hasSuffix(".md") { return "text.document" }
         if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return "photo" }
         if lowered == "makefile" { return "hammer" }
         if lowered.hasSuffix(".rs") { return "r.square" }
-        return "doc.text"
+        return "doc"
     }
 
-    private func fileColor(_ name: String) -> Color {
+    private func fileColor(_ name: String, isDirectory: Bool) -> Color {
+        if isDirectory { return AppTheme.accentSecondary.opacity(0.66) }
         let lowered = name.lowercased()
-        if lowered.hasSuffix(".swift") { return AppTheme.accent }
-        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return Color.purple.opacity(0.85) }
-        if lowered.hasSuffix(".md") { return Color.cyan.opacity(0.85) }
-        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return Color.orange.opacity(0.9) }
-        if lowered == "makefile" { return Color.yellow.opacity(0.9) }
-        if lowered.hasSuffix(".rs") { return Color.red.opacity(0.85) }
-        return AppTheme.chromeMuted
+        if lowered.hasSuffix(".swift") { return AppTheme.accent.opacity(0.72) }
+        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return AppTheme.accentSecondary.opacity(0.64) }
+        if lowered.hasSuffix(".md") { return AppTheme.chromeMuted.opacity(0.70) }
+        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return AppTheme.chromeMuted.opacity(0.66) }
+        if lowered == "makefile" { return AppTheme.chromeMuted.opacity(0.68) }
+        if lowered.hasSuffix(".rs") { return AppTheme.accentSecondary.opacity(0.60) }
+        return AppTheme.chromeMuted.opacity(0.62)
     }
 }
 
@@ -171,13 +192,13 @@ private struct FilesEmptyState: View {
     let subtitle: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 12.5, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText.opacity(0.9))
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
             }
         }

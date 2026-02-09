@@ -9,14 +9,14 @@ struct WorkspaceShell: View {
     var body: some View {
         VStack(spacing: 0) {
             TopBar(viewModel: viewModel)
-            Divider().overlay(AppTheme.chromeDivider)
+            Divider().overlay(AppTheme.chromeDividerStrong)
             ResizableSplitView(ratio: $splitRatio, minLeft: 190, minRight: 520) {
                 SidebarShell(viewModel: viewModel, leftTab: $leftTab)
             } right: {
                 DiffPanel(viewModel: viewModel)
             }
             if leftTab == .changes {
-                Divider().overlay(AppTheme.chromeDivider)
+                Divider().overlay(AppTheme.chromeDividerStrong)
                 CommitPanel(viewModel: viewModel)
             }
         }
@@ -40,11 +40,11 @@ struct WorkspaceShell: View {
         let target: CGFloat
         switch tab {
         case .changes:
-            target = 0.205
+            target = 0.209
         case .files:
-            target = 0.195
+            target = 0.203
         case .history:
-            target = 0.20
+            target = 0.207
         }
         guard abs(splitRatio - target) > 0.015 else { return }
         withAnimation(.easeInOut(duration: 0.15)) {

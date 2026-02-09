@@ -136,6 +136,10 @@ final class RepoViewModel: ObservableObject {
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         self.repoPath = (home as NSString).appendingPathComponent("Projects/grit")
+        Task { @MainActor in
+            guard !self.isRepoOpen else { return }
+            await self.openRepo(path: self.repoPath)
+        }
     }
 
     @MainActor

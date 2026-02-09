@@ -51,39 +51,30 @@ struct SidebarShell: View {
                 Spacer(minLength: 0)
             }
             .padding(1.5)
-            .background(AppTheme.chromeDark, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background(AppTheme.chromeDark, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .stroke(AppTheme.chromeDivider, lineWidth: 1)
             )
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
         .background(AppTheme.sidebarDark)
     }
 
     private func tab(_ title: String, mode: LeftPanelMode) -> some View {
-        Button {
+        SidebarTabControl(
+            title: title,
+            isSelected: leftTab == mode
+        ) {
             leftTab = mode
-        } label: {
-            Text(title)
-                .font(.system(size: 11, weight: leftTab == mode ? .semibold : .medium))
-                .foregroundStyle(leftTab == mode ? AppTheme.chromeText : AppTheme.chromeMuted.opacity(0.88))
-                .padding(.horizontal, 10)
-                .frame(height: 19)
-                .background(leftTab == mode ? AppTheme.chromeDarkElevated.opacity(1.0) : AppTheme.chromeDark.opacity(0.28), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(leftTab == mode ? AppTheme.chromeDivider : AppTheme.chromeDivider.opacity(0.2), lineWidth: 1)
-                }
         }
-        .buttonStyle(SidebarTabButtonStyle())
     }
 
     private var chrome: some View {
         VStack(spacing: 0) {
             header
-            Divider().overlay(AppTheme.chromeDivider)
+            Divider().overlay(AppTheme.chromeDividerStrong)
         }
     }
 
@@ -99,11 +90,63 @@ struct SidebarShell: View {
     }
 }
 
-private struct SidebarTabButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.74 : 1.0)
-            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+private struct SidebarTabControl: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering: Bool = false
+    @GestureState private var isPressing: Bool = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 10.0, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? AppTheme.chromeText.opacity(0.94) : AppTheme.chromeMuted.opacity(0.84))
+                .padding(.horizontal, 8)
+                .frame(height: 18)
+                .background(backgroundFill, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .stroke(borderColor, lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .opacity(isPressing ? 0.84 : 1.0)
+        .scaleEffect(isPressing ? 0.985 : 1.0)
+        .onHover { inside in
+            isHovering = inside
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .updating($isPressing) { _, state, _ in
+                    state = true
+                }
+        )
+        .animation(.easeOut(duration: 0.08), value: isPressing)
+        .animation(.easeOut(duration: 0.10), value: isHovering)
+    }
+
+    private var backgroundFill: Color {
+        if isSelected {
+            return Color(red: 0.232, green: 0.232, blue: 0.236)
+        }
+        if isPressing {
+            return AppTheme.chromeDarkElevated.opacity(0.55)
+        }
+        if isHovering {
+            return AppTheme.chromeDarkElevated.opacity(0.34)
+        }
+        return AppTheme.chromeDark.opacity(0.28)
+    }
+
+    private var borderColor: Color {
+        if isSelected {
+            return Color.white.opacity(0.13)
+        }
+        if isHovering {
+            return AppTheme.chromeDivider.opacity(0.55)
+        }
+        return AppTheme.chromeDivider.opacity(0.2)
     }
 }

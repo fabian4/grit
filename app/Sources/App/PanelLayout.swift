@@ -8,7 +8,7 @@ struct TopBar: View {
         HStack(spacing: 0) {
             leadingGroup
                 .padding(.leading, 68)
-                .frame(width: 246, alignment: .leading)
+                .frame(width: 240, alignment: .leading)
 
             Spacer(minLength: 0)
 
@@ -16,7 +16,7 @@ struct TopBar: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 7) {
+            HStack(spacing: 6) {
                 branchButton
                 iconButton(symbol: "arrow.clockwise") {
                     Task { await viewModel.refresh() }
@@ -28,16 +28,17 @@ struct TopBar: View {
                     Button("Fetch") {
                         viewModel.lastErrorMessage = "Fetch is not implemented in MVP."
                     }
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 10.0, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
                     .buttonStyle(.plain)
-                    .padding(.horizontal, 10)
-                    .frame(height: 24)
+                    .padding(.horizontal, 9)
+                    .frame(height: 23)
                     .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
                             .stroke(AppTheme.chromeDivider, lineWidth: 1)
                     )
+                    .hoverPressControl(cornerRadius: 5, hoverFillOpacity: 0.28, pressFillOpacity: 0.54)
                     .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
                     .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
                 } else {
@@ -56,28 +57,54 @@ struct TopBar: View {
                         .tint(AppTheme.chromeMuted.opacity(0.8))
                 }
             }
-            .frame(width: 246, alignment: .trailing)
-            .padding(.trailing, 8)
+            .frame(width: 240, alignment: .trailing)
+            .padding(.trailing, 10)
         }
-        .frame(height: 34)
-        .background(AppTheme.chromeDark.allowsHitTesting(false))
-        .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
+        .frame(height: 33)
+        .background(AppTheme.chromeBarGradient.allowsHitTesting(false))
+        .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDividerStrong).frame(height: 1) }
     }
 
     @ViewBuilder
     private var leadingGroup: some View {
         if viewModel.leftMode == .changes {
-            HStack(spacing: 8) {
-                Image(systemName: "folder.fill")
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle(AppTheme.accentSecondary)
-                Text(shortPath)
-                    .font(.system(size: 11, weight: .semibold))
+            if viewModel.isRepoOpen {
+                HStack(spacing: 8) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(AppTheme.accentSecondary)
+                    Text(shortPath)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Button {
+                    openRepoPicker()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 10.5, weight: .semibold))
+                        Text("Open Repo")
+                            .font(.system(size: 10.5, weight: .semibold))
+                    }
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .padding(.horizontal, 10)
+                    .frame(height: 23)
+                    .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(AppTheme.chromeDivider, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .hoverPressControl(cornerRadius: 5, hoverFillOpacity: 0.28, pressFillOpacity: 0.54)
+                .disabled(viewModel.isBusy)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             HStack(spacing: 8) {
                 Button {
@@ -99,6 +126,7 @@ struct TopBar: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .hoverPressControl(cornerRadius: 5, hoverFillOpacity: 0.28, pressFillOpacity: 0.54)
                 .disabled(viewModel.isBusy)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -129,6 +157,9 @@ struct TopBar: View {
     }
 
     private var shortPath: String {
+        if !viewModel.isRepoOpen {
+            return "~/Projects/grit-web"
+        }
         let path = viewModel.repoPath
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         if path.hasPrefix(home + "/") {
@@ -138,7 +169,7 @@ struct TopBar: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 11.5, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
@@ -153,10 +184,10 @@ struct TopBar: View {
                 .foregroundStyle(AppTheme.chromeText)
         }
         .padding(.horizontal, 8)
-        .frame(height: 23)
-        .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .frame(height: 22)
+        .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
                 .stroke(AppTheme.chromeDivider, lineWidth: 1)
         )
     }
@@ -167,40 +198,41 @@ struct TopBar: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.triangle.branch")
-                    .font(.system(size: 10.5, weight: .semibold))
-                Text(viewModel.currentBranch)
                     .font(.system(size: 10, weight: .semibold))
+                Text(viewModel.currentBranch)
+                    .font(.system(size: 9.5, weight: .semibold))
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
             }
             .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-            .padding(.horizontal, 10)
-            .frame(height: 23)
-            .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .padding(.horizontal, 9)
+            .frame(height: 22)
+            .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .stroke(AppTheme.chromeDivider, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
-        .opacity(viewModel.isRepoOpen ? 1.0 : 0.45)
-        .disabled(!viewModel.isRepoOpen)
+        .hoverPressControl(cornerRadius: 5, hoverFillOpacity: 0.28, pressFillOpacity: 0.54)
+        .opacity(1.0)
     }
 
     private func iconButton(symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                .frame(width: 26, height: 23)
-                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .frame(width: 24, height: 22)
+                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .stroke(AppTheme.chromeDivider, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
+        .hoverPressControl(cornerRadius: 5, hoverFillOpacity: 0.28, pressFillOpacity: 0.54)
     }
 
     private func openRepoPicker() {
@@ -1023,12 +1055,13 @@ struct DiffPanel: View {
     private let diffFontPreset: DiffFontPreset = .medium
     @State private var selectedHunkIndex: Int = 0
     @State private var focusSelectedHunk: Bool = false
+    @State private var showsCopiedBadgeHint: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
             if viewModel.leftMode != .history {
                 header
-                Divider().overlay(AppTheme.chromeDivider)
+                Divider().overlay(AppTheme.chromeDividerStrong)
             }
             if viewModel.leftMode == .files {
                 filesBody
@@ -1038,7 +1071,7 @@ struct DiffPanel: View {
                 changesBody
             }
         }
-        .background(AppTheme.editorBackground)
+        .background(AppTheme.mainPanelGradient)
         .onChange(of: viewModel.selectedPath) { _ in
             selectedHunkIndex = 0
         }
@@ -1048,27 +1081,41 @@ struct DiffPanel: View {
     }
 
     private var header: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 6) {
             Text(breadcrumb)
                 .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.92))
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.82))
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
-            Text(badgeText)
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.75))
-                .padding(.horizontal, 7)
-                .frame(height: 17)
-                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(AppTheme.chromeDivider, lineWidth: 1)
-                )
+            Button {
+                #if os(macOS)
+                let pb = NSPasteboard.general
+                pb.clearContents()
+                pb.setString(badgeText, forType: .string)
+                #endif
+                showsCopiedBadgeHint = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
+                    showsCopiedBadgeHint = false
+                }
+            } label: {
+                Text(showsCopiedBadgeHint ? "Copied" : badgeText)
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.68))
+                    .padding(.horizontal, 7)
+                    .frame(height: 17)
+                    .background(AppTheme.chromeDarkElevated.opacity(0.78), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(AppTheme.chromeDivider.opacity(0.75), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .hoverPressControl(cornerRadius: 4, hoverFillOpacity: 0.30, pressFillOpacity: 0.58)
         }
         .padding(.horizontal, 12)
         .frame(height: 29)
-        .background(AppTheme.panelDark)
+        .background(AppTheme.panelDark.opacity(0.92))
     }
 
     private var badgeText: String {
@@ -1221,14 +1268,14 @@ private struct EmptyMainState: View {
     let subtitle: String?
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeText.opacity(0.9))
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(AppTheme.chromeText.opacity(0.92))
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.93))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1682,6 +1729,55 @@ private struct HeaderAction: View {
         .buttonStyle(.plain)
         .background(AppTheme.chromeDarkElevated.opacity(0.75))
         .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+    }
+}
+
+private struct RightPaneHoverPressModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let hoverFillOpacity: Double
+    let pressFillOpacity: Double
+
+    @State private var isHovering: Bool = false
+    @GestureState private var isPressing: Bool = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                (isPressing
+                    ? AppTheme.chromeDarkElevated.opacity(pressFillOpacity)
+                    : (isHovering ? AppTheme.chromeDarkElevated.opacity(hoverFillOpacity) : .clear)
+                ),
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(isHovering ? AppTheme.chromeDivider.opacity(0.55) : .clear, lineWidth: 1)
+            )
+            .opacity(isPressing ? 0.84 : 1.0)
+            .scaleEffect(isPressing ? 0.985 : 1.0)
+            .onHover { inside in
+                isHovering = inside
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .updating($isPressing) { _, state, _ in
+                        state = true
+                    }
+            )
+            .animation(.easeOut(duration: 0.08), value: isPressing)
+            .animation(.easeOut(duration: 0.10), value: isHovering)
+    }
+}
+
+private extension View {
+    func hoverPressControl(cornerRadius: CGFloat, hoverFillOpacity: Double, pressFillOpacity: Double) -> some View {
+        modifier(
+            RightPaneHoverPressModifier(
+                cornerRadius: cornerRadius,
+                hoverFillOpacity: hoverFillOpacity,
+                pressFillOpacity: pressFillOpacity
+            )
+        )
     }
 }
 
