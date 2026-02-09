@@ -24,7 +24,7 @@ struct HistorySidebarPanel: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 section(title: "LOCAL BRANCHES") {
                     branchRow("main", badge: "2h", active: true)
                     branchRow("feature/vertical-layout", badge: "1d", active: false)
@@ -40,12 +40,12 @@ struct HistorySidebarPanel: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 10)
-            .padding(.top, 12)
+            .padding(.top, 10)
         }
     }
 
     private func section<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(AppTheme.chromeMuted)
@@ -65,12 +65,12 @@ struct HistorySidebarPanel: View {
             Spacer(minLength: 0)
             if let badge {
                 Text(badge)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeMuted)
             }
         }
         .padding(.horizontal, 6)
-        .frame(height: 24)
+        .frame(height: 22)
         .background(active ? AppTheme.chromeDarkElevated : .clear)
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
@@ -101,14 +101,14 @@ struct HistoryMainPanel: View {
                 Text("COMMIT MESSAGE")
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("AUTHOR")
-                    .frame(width: 180, alignment: .leading)
+                    .frame(width: 170, alignment: .leading)
                 Text("DATE")
-                    .frame(width: 90, alignment: .trailing)
+                    .frame(width: 84, alignment: .trailing)
             }
             .font(.system(size: 10.5, weight: .bold))
             .foregroundStyle(AppTheme.chromeMuted)
-            .padding(.horizontal, 12)
-            .frame(height: 28)
+            .padding(.horizontal, 11)
+            .frame(height: 26)
             .background(AppTheme.panelDark)
 
             ForEach(mockCommits) { commit in
@@ -123,7 +123,7 @@ struct HistoryMainPanel: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 6) {
                                     Text(commit.title)
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(AppTheme.chromeText)
                                         .lineLimit(1)
                                     if let tag = commit.tag {
@@ -148,27 +148,36 @@ struct HistoryMainPanel: View {
                         HStack(spacing: 7) {
                             Circle()
                                 .fill(AppTheme.accent.opacity(0.4))
-                                .frame(width: 18, height: 18)
+                                .frame(width: 17, height: 17)
                                 .overlay {
                                     Text(commit.initials)
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(.system(size: 7.5, weight: .bold))
                                         .foregroundStyle(AppTheme.chromeText)
                                 }
                             Text(commit.author)
-                                .font(.system(size: 12.5, weight: .medium))
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(AppTheme.chromeMuted)
                                 .lineLimit(1)
                         }
-                        .frame(width: 180, alignment: .leading)
+                        .frame(width: 170, alignment: .leading)
 
                         Text(commit.time)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 11.5, weight: .medium))
                             .foregroundStyle(AppTheme.chromeMuted)
-                            .frame(width: 90, alignment: .trailing)
+                            .frame(width: 84, alignment: .trailing)
                     }
-                    .padding(.horizontal, 12)
-                    .frame(height: commit.id == selectedCommitID ? 58 : 48)
+                    .padding(.horizontal, 11)
+                    .frame(height: commit.id == selectedCommitID ? 50 : 41)
                     .background(commit.id == selectedCommitID ? AppTheme.chromeDarkElevated.opacity(0.7) : .clear)
+                    .overlay(alignment: .leading) {
+                        Rectangle()
+                            .fill(commit.id == selectedCommitID ? AppTheme.accent.opacity(0.9) : .clear)
+                            .frame(width: 2)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 0)
+                            .stroke(commit.id == selectedCommitID ? AppTheme.chromeDivider.opacity(0.85) : .clear, lineWidth: 1)
+                    }
                 }
                 .buttonStyle(.plain)
                 Divider().overlay(AppTheme.chromeDivider.opacity(0.75))
@@ -177,24 +186,24 @@ struct HistoryMainPanel: View {
     }
 
     private var detailCard: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Circle()
                 .fill(AppTheme.accent.opacity(0.6))
-                .frame(width: 36, height: 36)
+                .frame(width: 34, height: 34)
                 .overlay {
                     Text(selectedCommit.initials)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 11.5, weight: .bold))
                         .foregroundStyle(AppTheme.chromeText)
                 }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(selectedCommit.title)
-                    .font(.system(size: 39, weight: .bold))
+                    .font(.system(size: 29, weight: .bold))
                     .foregroundStyle(AppTheme.chromeText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text("\(selectedCommit.author) committed 2 hours ago  •  \(selectedCommit.id)")
-                    .font(.system(size: 12.5, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(AppTheme.chromeMuted)
             }
             Spacer(minLength: 0)
@@ -207,9 +216,9 @@ struct HistoryMainPanel: View {
                     .frame(width: 22, height: 22)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(height: 86)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(height: 66)
         .background(AppTheme.panelDark)
     }
 

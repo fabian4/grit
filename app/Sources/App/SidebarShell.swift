@@ -51,7 +51,7 @@ struct SidebarShell: View {
                 Spacer(minLength: 0)
             }
             .padding(2)
-            .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background(AppTheme.chromeDark, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .stroke(AppTheme.chromeDivider, lineWidth: 1)
@@ -67,13 +67,17 @@ struct SidebarShell: View {
             leftTab = mode
         } label: {
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 11, weight: leftTab == mode ? .semibold : .medium))
                 .foregroundStyle(leftTab == mode ? AppTheme.chromeText : AppTheme.chromeMuted)
                 .padding(.horizontal, 10)
                 .frame(height: 20)
-                .background(leftTab == mode ? AppTheme.chromeDark : .clear, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .background(leftTab == mode ? AppTheme.chromeDarkElevated.opacity(1.0) : .clear, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(leftTab == mode ? AppTheme.chromeDivider : .clear, lineWidth: 1)
+                }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SidebarTabButtonStyle())
     }
 
     private var chrome: some View {
@@ -92,5 +96,14 @@ struct SidebarShell: View {
         } else if leftTab == .files {
             Task { await viewModel.loadFileForSelection() }
         }
+    }
+}
+
+private struct SidebarTabButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.80 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }

@@ -9,21 +9,19 @@ struct CommitPanel: View {
             Rectangle().fill(AppTheme.chromeDivider).frame(width: 1)
             stagedSummary
         }
-        .frame(height: 140)
+        .frame(height: 132)
         .background(AppTheme.panelDark)
     }
 
     private var commitEditor: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("WRITE A COMMIT MESSAGE")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $viewModel.commitMessage)
                     .font(.system(size: 12.5, weight: .regular))
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                    .padding(8)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
                     .background(AppTheme.mainDark)
                     .overlay(Rectangle().stroke(AppTheme.chromeDivider.opacity(0.9), lineWidth: 1))
                     .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
@@ -39,7 +37,7 @@ struct CommitPanel: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -89,7 +87,7 @@ struct CommitPanel: View {
             .keyboardShortcut(.return, modifiers: .command)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
         .frame(width: 260, alignment: .leading)
     }
 }

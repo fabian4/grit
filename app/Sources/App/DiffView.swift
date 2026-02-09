@@ -53,7 +53,13 @@ struct DiffView: View {
                 }
             }
         }
-        .border(Color.gray.opacity(0.3))
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(AppTheme.chromeDivider.opacity(0.7))
+                .frame(width: 1)
+                .padding(.leading, 80)
+        }
+        .background(AppTheme.editorBackground)
     }
 }
 
@@ -63,32 +69,42 @@ private struct DiffRowUnified: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Text(line.oldLine.map(String.init) ?? "")
-                .frame(width: 42, alignment: .trailing)
-                .foregroundStyle(.secondary)
+                .frame(width: 34, alignment: .trailing)
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.95))
             Text(line.newLine.map(String.init) ?? "")
-                .frame(width: 42, alignment: .trailing)
-                .foregroundStyle(.secondary)
+                .frame(width: 34, alignment: .trailing)
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.95))
             Text(line.text)
+                .foregroundStyle(textColor)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(.system(.body, design: .monospaced))
+        .font(.system(size: 12.5, weight: .regular, design: .monospaced))
         .padding(.vertical, 2)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 8)
         .background(backgroundColor)
     }
 
     private var backgroundColor: Color {
         switch line.kind {
         case .added:
-            return Color.green.opacity(0.15)
+            return AppTheme.diffAddedFill
         case .removed:
-            return Color.red.opacity(0.15)
+            return AppTheme.diffRemovedFill
         case .hunk:
-            return Color.gray.opacity(0.2)
+            return AppTheme.panelDark
         case .meta:
-            return Color.gray.opacity(0.1)
+            return AppTheme.panelDark.opacity(0.7)
         case .context:
             return Color.clear
+        }
+    }
+
+    private var textColor: Color {
+        switch line.kind {
+        case .hunk:
+            return AppTheme.accentSecondary.opacity(0.9)
+        case .added, .removed, .meta, .context:
+            return AppTheme.chromeText
         }
     }
 }
@@ -116,14 +132,15 @@ private struct DiffRowSideBySide: View {
     private func sideCell(lineNumber: Int?, text: String, background: Color) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(lineNumber.map(String.init) ?? "")
-                .frame(width: 42, alignment: .trailing)
-                .foregroundStyle(.secondary)
+                .frame(width: 34, alignment: .trailing)
+                .foregroundStyle(AppTheme.chromeMuted.opacity(0.95))
             Text(text)
+                .foregroundStyle(AppTheme.chromeText)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(.system(.body, design: .monospaced))
+        .font(.system(size: 12.5, weight: .regular, design: .monospaced))
         .padding(.vertical, 2)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(background)
     }
@@ -157,11 +174,11 @@ private struct DiffRowSideBySide: View {
     private var leftBackground: Color {
         switch line.kind {
         case .removed:
-            return Color.red.opacity(0.15)
+            return AppTheme.diffRemovedFill
         case .hunk:
-            return Color.gray.opacity(0.2)
+            return AppTheme.panelDark
         case .meta:
-            return Color.gray.opacity(0.1)
+            return AppTheme.panelDark.opacity(0.7)
         default:
             return Color.clear
         }
@@ -170,11 +187,11 @@ private struct DiffRowSideBySide: View {
     private var rightBackground: Color {
         switch line.kind {
         case .added:
-            return Color.green.opacity(0.15)
+            return AppTheme.diffAddedFill
         case .hunk:
-            return Color.gray.opacity(0.2)
+            return AppTheme.panelDark
         case .meta:
-            return Color.gray.opacity(0.1)
+            return AppTheme.panelDark.opacity(0.7)
         default:
             return Color.clear
         }

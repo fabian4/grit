@@ -17,7 +17,7 @@ struct ContentView: View {
                         .stroke(AppTheme.chromeDivider, lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.22), radius: 18, x: 0, y: 8)
-                .padding(16)
+                .padding(12)
                 .frame(minWidth: 900, minHeight: 600)
                 .onAppear {
                     NSApp.activate(ignoringOtherApps: true)

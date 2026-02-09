@@ -178,17 +178,17 @@ private struct ChangeRow: View {
                 Image(systemName: item.isStaged ? "checkmark.square.fill" : "square")
                     .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(item.isStaged ? AppTheme.accent : AppTheme.chromeMuted)
-                    .frame(width: 14, height: 14)
+                    .frame(width: 13, height: 13)
             }
             .buttonStyle(.plain)
 
             Image(systemName: fileSymbol)
-                .font(.system(size: 13, weight: .regular))
+                .font(.system(size: 12.5, weight: .regular))
                 .foregroundStyle(fileColor)
-                .frame(width: 16, alignment: .leading)
+                .frame(width: 15, alignment: .leading)
 
             Text(fileName)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(AppTheme.chromeText)
                 .lineLimit(1)
 
@@ -197,9 +197,9 @@ private struct ChangeRow: View {
             ChangeStatsPill(additions: item.additions, deletions: item.deletions)
         }
         .padding(.horizontal, 8)
-        .frame(height: 21)
+        .frame(height: 22)
         .contentShape(Rectangle())
-        .background(isSelected ? Color.white.opacity(0.07) : .clear)
+        .background(isSelected ? AppTheme.chromeDarkElevated : .clear)
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(isSelected ? AppTheme.accent.opacity(0.8) : .clear)
@@ -267,16 +267,19 @@ private struct ChangeStatsPill: View {
             if show {
                 HStack(spacing: 8) {
                     Text("+\(additions)")
-                        .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(Color.green.opacity(0.9))
                     Text("-\(deletions)")
-                        .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(Color.red.opacity(0.9))
                 }
                 .padding(.horizontal, 10)
-                .frame(height: 18)
-                .background(AppTheme.accent.opacity(0.9))
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .frame(height: 19)
+                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(AppTheme.chromeDivider, lineWidth: 1)
+                )
             } else {
                 EmptyView()
             }

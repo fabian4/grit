@@ -7,27 +7,16 @@ struct TopBar: View {
     var body: some View {
         HStack(spacing: 0) {
             leadingGroup
-            .padding(.leading, 72)
+                .padding(.leading, 68)
+                .frame(width: 238, alignment: .leading)
 
             Spacer(minLength: 0)
 
-            if viewModel.leftMode == .changes {
-                searchField
-                    .frame(width: 280)
-            } else {
-                HStack(spacing: 6) {
-                    Image(systemName: "shippingbox")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
-                    Text(repoName)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                }
-            }
+            centerGroup
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 branchButton
                 iconButton(symbol: "arrow.clockwise") {
                     Task { await viewModel.refresh() }
@@ -35,21 +24,29 @@ struct TopBar: View {
                 .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
                 .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
-                Button("Fetch") {
-                    viewModel.lastErrorMessage = "Fetch is not implemented in MVP."
+                if viewModel.leftMode == .changes {
+                    Button("Fetch") {
+                        viewModel.lastErrorMessage = "Fetch is not implemented in MVP."
+                    }
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 10)
+                    .frame(height: 24)
+                    .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .stroke(AppTheme.chromeDivider, lineWidth: 1)
+                    )
+                    .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
+                    .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
+                } else {
+                    iconButton(symbol: "arrow.down.to.line") {
+                        viewModel.lastErrorMessage = "Fetch is not implemented in MVP."
+                    }
+                    .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
+                    .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
                 }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                .buttonStyle(.plain)
-                .padding(.horizontal, 10)
-                .frame(height: 22)
-                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(AppTheme.chromeDivider, lineWidth: 1)
-                )
-                .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
-                .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
                 if viewModel.isBusy {
                     ProgressView()
@@ -59,9 +56,10 @@ struct TopBar: View {
                         .tint(AppTheme.chromeMuted.opacity(0.8))
                 }
             }
-            .padding(.trailing, 10)
+            .frame(width: 238, alignment: .trailing)
+            .padding(.trailing, 8)
         }
-        .frame(height: 32)
+        .frame(height: 34)
         .background(AppTheme.chromeDark.allowsHitTesting(false))
         .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
     }
@@ -71,15 +69,15 @@ struct TopBar: View {
         if viewModel.leftMode == .changes {
             HStack(spacing: 8) {
                 Image(systemName: "folder.fill")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 10.5, weight: .semibold))
                     .foregroundStyle(AppTheme.accentSecondary)
                 Text(shortPath)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            .frame(width: 260, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             HStack(spacing: 8) {
                 Button {
@@ -87,13 +85,13 @@ struct TopBar: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "folder")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 10.5, weight: .semibold))
                         Text("Open Repo")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 10.5, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.chromeText.opacity(0.95))
                     .padding(.horizontal, 10)
-                    .frame(height: 22)
+                    .frame(height: 24)
                     .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -103,7 +101,25 @@ struct TopBar: View {
                 .buttonStyle(.plain)
                 .disabled(viewModel.isBusy)
             }
-            .frame(width: 260, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private var centerGroup: some View {
+        if viewModel.leftMode == .changes {
+            searchField
+                .frame(width: 264)
+        } else {
+            HStack(spacing: 6) {
+                Image(systemName: "shippingbox")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
+                Text(repoName)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+            }
+            .frame(width: 264, alignment: .center)
         }
     }
 
@@ -131,8 +147,8 @@ struct TopBar: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AppTheme.chromeText)
         }
-        .padding(.horizontal, 10)
-        .frame(height: 22)
+        .padding(.horizontal, 9)
+        .frame(height: 24)
         .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -145,17 +161,17 @@ struct TopBar: View {
             // MVP: read-only
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: "arrow.triangle.branch")
-                    .font(.system(size: 11, weight: .semibold))
+            Image(systemName: "arrow.triangle.branch")
+                    .font(.system(size: 10.5, weight: .semibold))
                 Text(viewModel.currentBranch)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 10.5, weight: .semibold))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
             }
             .foregroundStyle(AppTheme.chromeText.opacity(0.95))
             .padding(.horizontal, 10)
-            .frame(height: 22)
+            .frame(height: 24)
             .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -172,7 +188,7 @@ struct TopBar: View {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                .frame(width: 28, height: 22)
+                .frame(width: 28, height: 24)
                 .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -1005,8 +1021,10 @@ struct DiffPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider().overlay(AppTheme.chromeDivider)
+            if viewModel.leftMode != .history {
+                header
+                Divider().overlay(AppTheme.chromeDivider)
+            }
             if viewModel.leftMode == .files {
                 filesBody
             } else if viewModel.leftMode == .history {
@@ -1032,17 +1050,29 @@ struct DiffPanel: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
-            Text("Binary: No")
+            Text(badgeText)
                 .font(.system(size: 10.5, weight: .bold))
                 .foregroundStyle(AppTheme.chromeMuted.opacity(0.75))
                 .padding(.horizontal, 8)
                 .frame(height: 18)
-                .background(AppTheme.chromeDarkElevated)
-                .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(AppTheme.chromeDivider, lineWidth: 1)
+                )
         }
         .padding(.horizontal, 12)
         .frame(height: 28)
         .background(AppTheme.panelDark)
+    }
+
+    private var badgeText: String {
+        if viewModel.leftMode == .files, !viewModel.fileContent.isEmpty {
+            let bytes = Int64(viewModel.fileContent.utf8.count)
+            let kb = max(0.1, (Double(bytes) / 1024.0))
+            return String(format: "%.1f KB", kb)
+        }
+        return "Binary: No"
     }
 
     private var breadcrumb: String {
