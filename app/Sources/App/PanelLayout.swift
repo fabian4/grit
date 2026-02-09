@@ -6,51 +6,24 @@ struct TopBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Button {
-                    openRepoPicker()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 11, weight: .semibold))
-                        Text("Open Repo")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                    .padding(.horizontal, 10)
-                    .frame(height: 22)
-                    .background(AppTheme.chromeDarkElevated)
-                    .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.isBusy)
+            leadingGroup
+            .padding(.leading, 72)
 
+            Spacer(minLength: 0)
+
+            if viewModel.leftMode == .changes {
+                searchField
+                    .frame(width: 280)
+            } else {
                 HStack(spacing: 6) {
                     Image(systemName: "shippingbox")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(AppTheme.chromeMuted.opacity(0.9))
                     Text(repoName)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(AppTheme.chromeText.opacity(0.95))
-                    if viewModel.isRepoOpen {
-                        Text("—")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(AppTheme.chromeMuted.opacity(0.55))
-                        Text(shortPath)
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(AppTheme.chromeMuted.opacity(0.85))
-                            .lineLimit(1)
-                            .truncationMode(.head)
-                    }
                 }
-                .frame(width: 260, alignment: .leading)
             }
-            .padding(.leading, 72)
-
-            Spacer(minLength: 0)
-
-            searchField
-                .frame(width: 280)
 
             Spacer(minLength: 0)
 
@@ -70,8 +43,11 @@ struct TopBar: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 10)
                 .frame(height: 22)
-                .background(AppTheme.chromeDarkElevated)
-                .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(AppTheme.chromeDivider, lineWidth: 1)
+                )
                 .opacity(viewModel.isRepoOpen && !viewModel.isBusy ? 1.0 : 0.45)
                 .disabled(!viewModel.isRepoOpen || viewModel.isBusy)
 
@@ -88,6 +64,47 @@ struct TopBar: View {
         .frame(height: 32)
         .background(AppTheme.chromeDark.allowsHitTesting(false))
         .overlay(alignment: .bottom) { Rectangle().fill(AppTheme.chromeDivider).frame(height: 1) }
+    }
+
+    @ViewBuilder
+    private var leadingGroup: some View {
+        if viewModel.leftMode == .changes {
+            HStack(spacing: 8) {
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.accentSecondary)
+                Text(shortPath)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .frame(width: 260, alignment: .leading)
+        } else {
+            HStack(spacing: 8) {
+                Button {
+                    openRepoPicker()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Open Repo")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(AppTheme.chromeText.opacity(0.95))
+                    .padding(.horizontal, 10)
+                    .frame(height: 22)
+                    .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .stroke(AppTheme.chromeDivider, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isBusy)
+            }
+            .frame(width: 260, alignment: .leading)
+        }
     }
 
     private var repoName: String {
@@ -116,8 +133,11 @@ struct TopBar: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 22)
-        .background(AppTheme.chromeDarkElevated)
-        .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+        .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .stroke(AppTheme.chromeDivider, lineWidth: 1)
+        )
     }
 
     private var branchButton: some View {
@@ -136,8 +156,11 @@ struct TopBar: View {
             .foregroundStyle(AppTheme.chromeText.opacity(0.95))
             .padding(.horizontal, 10)
             .frame(height: 22)
-            .background(AppTheme.chromeDarkElevated)
-            .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+            .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(AppTheme.chromeDivider, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .opacity(viewModel.isRepoOpen ? 1.0 : 0.45)
@@ -150,8 +173,11 @@ struct TopBar: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.chromeText.opacity(0.95))
                 .frame(width: 28, height: 22)
-                .background(AppTheme.chromeDarkElevated)
-                .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+                .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(AppTheme.chromeDivider, lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
     }

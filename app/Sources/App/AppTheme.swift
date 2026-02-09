@@ -31,7 +31,11 @@ enum AppTheme {
     static let chromeMuted = adaptive(light: NSColor.black.withAlphaComponent(0.50), dark: NSColor.white.withAlphaComponent(0.45))
     static let editorBackground = mainDark
     static let editorHeader = mainDark
-    static let editorDivider = Color.white.opacity(0.08)
+    static let editorDivider = adaptive(light: NSColor.black.withAlphaComponent(0.10), dark: NSColor.white.withAlphaComponent(0.08))
+    static let windowBackdrop = adaptive(
+        light: NSColor(calibratedRed: 0.89, green: 0.90, blue: 0.92, alpha: 1),
+        dark: NSColor(calibratedRed: 0.16, green: 0.16, blue: 0.17, alpha: 1)
+    )
 
     static let diffAddedFill = Color(red: 0.11, green: 0.32, blue: 0.18).opacity(0.55)
     static let diffRemovedFill = Color(red: 0.36, green: 0.12, blue: 0.12).opacity(0.55)

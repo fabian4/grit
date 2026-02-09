@@ -50,7 +50,12 @@ struct SidebarShell: View {
                 tab("History", mode: .history)
                 Spacer(minLength: 0)
             }
-            .overlay(Rectangle().stroke(AppTheme.chromeDivider, lineWidth: 1))
+            .padding(2)
+            .background(AppTheme.chromeDarkElevated, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(AppTheme.chromeDivider, lineWidth: 1)
+            )
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
@@ -66,7 +71,7 @@ struct SidebarShell: View {
                 .foregroundStyle(leftTab == mode ? AppTheme.chromeText : AppTheme.chromeMuted)
                 .padding(.horizontal, 10)
                 .frame(height: 20)
-                .background(leftTab == mode ? AppTheme.chromeDarkElevated : AppTheme.sidebarDark)
+                .background(leftTab == mode ? AppTheme.chromeDark : .clear, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
         .buttonStyle(.plain)
     }

@@ -120,18 +120,27 @@ struct HistoryMainPanel: View {
                             Circle()
                                 .fill(commit.id == selectedCommitID ? AppTheme.accent : AppTheme.chromeMuted.opacity(0.65))
                                 .frame(width: 6, height: 6)
-                            Text(commit.title)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(AppTheme.chromeText)
-                                .lineLimit(1)
-                            if let tag = commit.tag {
-                                Text(tag)
-                                    .font(.system(size: 9.5, weight: .bold))
-                                    .foregroundStyle(AppTheme.accent)
-                                    .padding(.horizontal, 5)
-                                    .frame(height: 15)
-                                    .background(AppTheme.accent.opacity(0.15))
-                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 6) {
+                                    Text(commit.title)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(AppTheme.chromeText)
+                                        .lineLimit(1)
+                                    if let tag = commit.tag {
+                                        Text(tag)
+                                            .font(.system(size: 9.5, weight: .bold))
+                                            .foregroundStyle(AppTheme.accent)
+                                            .padding(.horizontal, 5)
+                                            .frame(height: 15)
+                                            .background(AppTheme.accent.opacity(0.15))
+                                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                                    }
+                                }
+                                if commit.id == selectedCommitID {
+                                    Text(commit.id)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(AppTheme.accent.opacity(0.8))
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -158,7 +167,7 @@ struct HistoryMainPanel: View {
                             .frame(width: 90, alignment: .trailing)
                     }
                     .padding(.horizontal, 12)
-                    .frame(height: 48)
+                    .frame(height: commit.id == selectedCommitID ? 58 : 48)
                     .background(commit.id == selectedCommitID ? AppTheme.chromeDarkElevated.opacity(0.7) : .clear)
                 }
                 .buttonStyle(.plain)
@@ -180,7 +189,7 @@ struct HistoryMainPanel: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(selectedCommit.title)
-                    .font(.system(size: 33, weight: .bold))
+                    .font(.system(size: 39, weight: .bold))
                     .foregroundStyle(AppTheme.chromeText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -200,7 +209,7 @@ struct HistoryMainPanel: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .frame(height: 72)
+        .frame(height: 86)
         .background(AppTheme.panelDark)
     }
 
