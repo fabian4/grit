@@ -4,18 +4,23 @@ struct WorkspaceShell: View {
     @ObservedObject var viewModel: RepoViewModel
     @Binding var splitRatio: CGFloat
     @State private var showGitError: Bool = false
-    @State private var leftTab: LeftPanelMode = .changes
 
     var body: some View {
         VStack(spacing: 0) {
             TopBar(viewModel: viewModel)
             Divider().overlay(AppTheme.chromeDividerStrong)
             ResizableSplitView(ratio: $splitRatio, minLeft: 190, minRight: 520) {
-                SidebarShell(viewModel: viewModel, leftTab: $leftTab)
+                SidebarShell(
+                    viewModel: viewModel,
+                    leftTab: Binding(
+                        get: { viewModel.leftMode },
+                        set: { viewModel.leftMode = $0 }
+                    )
+                )
             } right: {
                 DiffPanel(viewModel: viewModel)
             }
-            if leftTab == .changes {
+            if viewModel.leftMode == .changes {
                 Divider().overlay(AppTheme.chromeDividerStrong)
                 CommitPanel(viewModel: viewModel)
             }
@@ -24,9 +29,9 @@ struct WorkspaceShell: View {
             showGitError = viewModel.lastErrorMessage != nil
         }
         .onAppear {
-            normalizeSplitRatio(for: leftTab)
+            normalizeSplitRatio(for: viewModel.leftMode)
         }
-        .onChange(of: leftTab) { newTab in
+        .onChange(of: viewModel.leftMode) { newTab in
             normalizeSplitRatio(for: newTab)
         }
         .alert("Git Error", isPresented: $showGitError) {

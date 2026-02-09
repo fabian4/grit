@@ -3,6 +3,7 @@ import SwiftUI
 struct FilesPanel: View {
     @ObservedObject var viewModel: RepoViewModel
     @State private var collapsed: Set<String> = []
+    @State private var hasInitializedCollapseState: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,7 +14,12 @@ struct FilesPanel: View {
             viewModel.leftMode = .files
             if viewModel.fileTree.isEmpty {
                 Task { await viewModel.refreshFiles() }
+            } else if !hasInitializedCollapseState {
+                applyDefaultCollapseState()
             }
+        }
+        .onChange(of: viewModel.fileTree) { _ in
+            applyDefaultCollapseState()
         }
     }
 
@@ -91,6 +97,52 @@ struct FilesPanel: View {
             collapsed.insert(id)
         }
     }
+
+    private func applyDefaultCollapseState() {
+        var initial = allDirectoryIDs(in: viewModel.fileTree)
+
+        // Expand ancestors of selected file so current context is visible.
+        if let selectedID = viewModel.selectedFileID, !selectedID.isEmpty {
+            for ancestor in ancestorDirectoryIDs(for: selectedID) {
+                initial.remove(ancestor)
+            }
+        } else if let selectedPath = viewModel.selectedPath, !selectedPath.isEmpty {
+            for ancestor in ancestorDirectoryIDs(for: selectedPath) {
+                initial.remove(ancestor)
+            }
+        } else {
+            // With no selection, keep top-level visible for quick scanning.
+            for node in viewModel.fileTree where node.isDirectory {
+                initial.remove(node.id)
+            }
+        }
+
+        collapsed = initial
+        hasInitializedCollapseState = true
+    }
+
+    private func allDirectoryIDs(in nodes: [FileNode]) -> Set<String> {
+        var ids: Set<String> = []
+        for node in nodes where node.isDirectory {
+            ids.insert(node.id)
+            if let children = node.children {
+                ids.formUnion(allDirectoryIDs(in: children))
+            }
+        }
+        return ids
+    }
+
+    private func ancestorDirectoryIDs(for path: String) -> [String] {
+        let parts = path.split(separator: "/").map(String.init)
+        guard parts.count > 1 else { return [] }
+        var result: [String] = []
+        var current = ""
+        for segment in parts.dropLast() {
+            current = current.isEmpty ? segment : "\(current)/\(segment)"
+            result.append(current)
+        }
+        return result
+    }
 }
 
 private struct FileRowEntry: Hashable {
@@ -104,11 +156,10 @@ private struct FileTreeRow: View {
     let isSelected: Bool
     let onTap: () -> Void
     @State private var isHovering: Bool = false
-    @GestureState private var isPressing: Bool = false
 
     var body: some View {
         HStack(spacing: 0) {
-            Color.clear.frame(width: CGFloat(entry.depth) * 12, height: 1)
+            Color.clear.frame(width: CGFloat(entry.depth) * 13, height: 1)
 
             Group {
                 if entry.node.isDirectory {
@@ -117,50 +168,32 @@ private struct FileTreeRow: View {
                     Color.clear
                 }
             }
-            .frame(width: 11, alignment: .center)
-            .font(.system(size: 8.5, weight: .bold))
-            .foregroundStyle(AppTheme.chromeMuted.opacity(0.60))
+            .frame(width: 12, alignment: .center)
+            .font(.system(size: 8, weight: .semibold))
+            .foregroundStyle(AppTheme.chromeMuted.opacity(0.58))
 
             Image(systemName: entry.node.isDirectory ? "folder.fill" : fileSymbol(entry.node.name))
-                .font(.system(size: 10.0, weight: entry.node.isDirectory ? .medium : .regular))
+                .font(.system(size: 11, weight: entry.node.isDirectory ? .medium : .regular))
                 .foregroundStyle(fileColor(entry.node.name, isDirectory: entry.node.isDirectory))
-                .frame(width: 12, alignment: .center)
-                .padding(.leading, 3)
-                .padding(.trailing, 6)
+                .frame(width: 13, alignment: .center)
+                .padding(.leading, 2)
+                .padding(.trailing, 7)
 
             Text(entry.node.name)
-                .font(.system(size: 10.6, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(isSelected ? AppTheme.chromeText.opacity(0.92) : AppTheme.chromeText.opacity(0.68))
+                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? AppTheme.chromeText.opacity(0.98) : AppTheme.chromeText.opacity(0.75))
                 .lineLimit(1)
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 22)
+        .padding(.horizontal, 7)
+        .frame(height: 24)
         .contentShape(Rectangle())
-        .background(
-            isSelected
-                ? Color(red: 0.205, green: 0.218, blue: 0.246).opacity(0.78)
-                : (isPressing ? AppTheme.chromeDarkElevated.opacity(0.38) : (isHovering ? AppTheme.chromeDarkElevated.opacity(0.18) : .clear))
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 2.5, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 2.5, style: .continuous)
-                .stroke(
-                    isSelected ? AppTheme.chromeDivider.opacity(0.36) : (isHovering ? AppTheme.chromeDivider.opacity(0.24) : .clear),
-                    lineWidth: 1
-                )
-        }
+        .background(isSelected ? Color(red: 0.235, green: 0.245, blue: 0.278).opacity(0.72) : (isHovering ? AppTheme.chromeDarkElevated.opacity(0.16) : .clear))
         .onTapGesture(perform: onTap)
         .onHover { inside in
             isHovering = inside
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .updating($isPressing) { _, state, _ in
-                    state = true
-                }
-        )
     }
 
     private func fileSymbol(_ name: String) -> String {
@@ -175,15 +208,15 @@ private struct FileTreeRow: View {
     }
 
     private func fileColor(_ name: String, isDirectory: Bool) -> Color {
-        if isDirectory { return AppTheme.accentSecondary.opacity(0.66) }
+        if isDirectory { return AppTheme.accentSecondary.opacity(0.72) }
         let lowered = name.lowercased()
-        if lowered.hasSuffix(".swift") { return AppTheme.accent.opacity(0.72) }
-        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return AppTheme.accentSecondary.opacity(0.64) }
-        if lowered.hasSuffix(".md") { return AppTheme.chromeMuted.opacity(0.70) }
-        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return AppTheme.chromeMuted.opacity(0.66) }
-        if lowered == "makefile" { return AppTheme.chromeMuted.opacity(0.68) }
-        if lowered.hasSuffix(".rs") { return AppTheme.accentSecondary.opacity(0.60) }
-        return AppTheme.chromeMuted.opacity(0.62)
+        if lowered.hasSuffix(".swift") { return AppTheme.accent.opacity(0.78) }
+        if lowered.hasSuffix(".json") || lowered.hasSuffix(".toml") || lowered.hasSuffix(".yaml") || lowered.hasSuffix(".yml") { return AppTheme.accentSecondary.opacity(0.68) }
+        if lowered.hasSuffix(".md") { return AppTheme.chromeMuted.opacity(0.74) }
+        if lowered.hasSuffix(".png") || lowered.hasSuffix(".jpg") || lowered.hasSuffix(".jpeg") || lowered.hasSuffix(".svg") { return AppTheme.chromeMuted.opacity(0.70) }
+        if lowered == "makefile" { return AppTheme.chromeMuted.opacity(0.72) }
+        if lowered.hasSuffix(".rs") { return AppTheme.accentSecondary.opacity(0.64) }
+        return AppTheme.chromeMuted.opacity(0.66)
     }
 }
 

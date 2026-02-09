@@ -1,14 +1,8 @@
 import SwiftUI
 
 struct SidebarShell: View {
-    private enum PrefKey {
-        static let leftTab = "ui.left.tab"
-    }
-
     @ObservedObject var viewModel: RepoViewModel
     @Binding var leftTab: LeftPanelMode
-
-    @State private var didLoadPref: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,15 +17,9 @@ struct SidebarShell: View {
             }
         }
         .onAppear {
-            if !didLoadPref {
-                let raw = UserDefaults.standard.string(forKey: PrefKey.leftTab)
-                leftTab = LeftPanelMode(rawValue: raw ?? "") ?? .changes
-                didLoadPref = true
-            }
             applyTab()
         }
         .onChange(of: leftTab) { _ in
-            UserDefaults.standard.set(leftTab.rawValue, forKey: PrefKey.leftTab)
             applyTab()
         }
     }
@@ -85,7 +73,10 @@ struct SidebarShell: View {
                 Task { await viewModel.loadDiffForSelection() }
             }
         } else if leftTab == .files {
-            Task { await viewModel.loadFileForSelection() }
+            Task {
+                await viewModel.refreshFiles()
+                await viewModel.loadFileForSelection()
+            }
         }
     }
 }

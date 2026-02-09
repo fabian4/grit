@@ -648,7 +648,14 @@ final class RepoViewModel: ObservableObject {
             )
             var children: [FileNode] = []
             for child in childrenUrls {
-                if child.lastPathComponent == ".git" { continue }
+                let childIsDirectory = (try? child.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+                if shouldIgnoreNode(
+                    name: child.lastPathComponent,
+                    relativePath: child.path.replacingOccurrences(of: rootURL.path + "/", with: ""),
+                    isDirectory: childIsDirectory
+                ) {
+                    continue
+                }
                 if let node = try? buildTree(url: child, rootURL: rootURL, fm: fm) {
                     children.append(node)
                 }
@@ -677,6 +684,33 @@ final class RepoViewModel: ObservableObject {
                 children: nil
             )
         }
+    }
+
+    private func shouldIgnoreNode(name: String, relativePath: String, isDirectory: Bool) -> Bool {
+        if name == ".git" || name == ".DS_Store" { return true }
+
+        let ignoredDirectories: Set<String> = [
+            ".build",
+            ".idea",
+            ".swiftpm",
+            ".vscode",
+            "DerivedData",
+            "node_modules",
+            "Pods"
+        ]
+        if isDirectory && ignoredDirectories.contains(name) {
+            return true
+        }
+
+        // Keep repo-level dotfiles and .github, but hide tooling/system hidden folders.
+        if isDirectory && name.hasPrefix(".") && name != ".github" {
+            let depth = relativePath.split(separator: "/").count
+            if depth > 1 || name == ".idea" {
+                return true
+            }
+        }
+
+        return false
     }
 
     private func buildIndex(from nodes: [FileNode]) -> [String: FileNode] {
